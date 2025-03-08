@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/masgari/ollama-cli/pkg/config"
+	"github.com/masgari/ollama-cli/pkg/output"
 	"github.com/ollama/ollama/api"
 )
 
@@ -78,6 +79,30 @@ func (c *Client) DeleteModel(ctx context.Context, modelName string) error {
 
 	if err := c.apiClient.Delete(ctx, req); err != nil {
 		return fmt.Errorf("failed to delete model: %w", err)
+	}
+
+	return nil
+}
+
+// PullModel pulls a model from the Ollama server
+func (c *Client) PullModel(ctx context.Context, modelName string) error {
+	ctx, cancel := context.WithTimeout(ctx, 30*time.Minute) // Longer timeout for model downloads
+	defer cancel()
+
+	req := &api.PullRequest{
+		Name: modelName,
+	}
+
+	if err := c.apiClient.Pull(ctx, req, func(progress api.ProgressResponse) error {
+		if progress.Status != "" {
+			fmt.Printf("\r%s: %s", output.Highlight(modelName), output.Info(progress.Status))
+			if progress.Total > 0 && progress.Completed == progress.Total {
+				fmt.Println() // Add newline when complete
+			}
+		}
+		return nil
+	}); err != nil {
+		return fmt.Errorf("failed to pull model: %w", err)
 	}
 
 	return nil

@@ -7,6 +7,7 @@ A command-line interface for interacting with a remote Ollama server.
 - List models available on a remote Ollama server
 - Configure connection to a remote Ollama server
 - Remove models from the Ollama server
+- Pull models from the Ollama server
 - More features coming soon!
 
 ## Installation
@@ -170,6 +171,16 @@ ollama-cli rm model-name --force
 # or
 ollama-cli rm model-name -f
 ```
+
+### Pull Models
+
+Pull a model from the Ollama server:
+
+```bash
+ollama-cli pull model-name
+```
+
+This command will download the model and show the progress. The download may take some time depending on the model size and your internet connection.
 
 ### Version
 
