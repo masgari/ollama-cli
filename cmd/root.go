@@ -14,6 +14,7 @@ var (
 	cfgFile string
 	cfg     *config.Config
 	noColor bool
+	verbose bool
 )
 
 // rootCmd represents the base command when called without any subcommands
@@ -64,6 +65,7 @@ func init() {
 	rootCmd.PersistentFlags().StringP("host", "H", "", "Ollama server host (default is localhost)")
 	rootCmd.PersistentFlags().IntP("port", "p", 0, "Ollama server port (default is 11434)")
 	rootCmd.PersistentFlags().BoolVar(&noColor, "no-color", false, "Disable color output")
+	rootCmd.PersistentFlags().BoolVarP(&verbose, "verbose", "v", false, "verbose output")
 }
 
 // initConfig reads in config file and ENV variables if set.
@@ -89,6 +91,8 @@ func initConfig() {
 
 	// If a config file is found, read it in.
 	if err := viper.ReadInConfig(); err == nil {
-		fmt.Println("Using config file:", viper.ConfigFileUsed())
+		if verbose {
+			fmt.Println("Using config file:", viper.ConfigFileUsed())
+		}
 	}
 }

@@ -5,6 +5,9 @@
 *.so
 *.dylib
 
+ollama-cli
+
+
 # Test binary, built with `go test -c`
 *.test
 

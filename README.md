@@ -103,6 +103,54 @@ ollama-cli list --output wide
 ollama-cli list --output json
 ```
 
+### Available Models (Remote)
+
+List all models available from the Ollama model library:
+
+```bash
+ollama-cli available
+# or
+ollama-cli avail
+```
+
+#### Filter Models
+
+You can filter models by name using the `-f` or `--filter` flag:
+
+```
+$ ollama-cli avail -f deep
+NAME                  SIZE                                   UPDATED
+deepscaler           1.5b                                   3 weeks ago
+deepseek-r1          1.5b,7b,8b,14b,32b,70b,671b          4 weeks ago
+deepseek-v3          671b                                   1 month ago
+deepseek-v2.5        236b                                   5 months ago
+deepseek-coder-v2    16b,236b                              6 months ago
+deepseek-v2          16b,236b                              8 months ago
+deepseek-coder       1.3b,6.7b,33b                         1 year ago
+deepseek-llm         7b,67b                                1 year ago
+```
+
+Note: In the terminal, this output is displayed with colors:
+- Model names appear in cyan
+- Sizes and timestamps appear in green
+- Headers appear in bright white
+
+#### Output Formats
+
+```bash
+# Default table format
+ollama-cli avail
+
+# Show detailed information including descriptions
+ollama-cli avail --details
+
+# Wide format showing all information
+ollama-cli avail --output wide
+
+# JSON format for programmatic use
+ollama-cli avail --output json
+```
+
 ### Remove Models
 
 Remove a model from the Ollama server:
@@ -133,4 +181,4 @@ ollama-cli version
 
 ## License
 
-This project is licensed under the MIT License - see the LICENSE file for details. 
+This project is licensed under the Apache License 2.0 - see the LICENSE file for details.
