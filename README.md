@@ -1,193 +1,161 @@
 # Ollama CLI
 
-A command-line interface for interacting with a remote Ollama server.
+A lightweight command-line interface for managing remote Ollama servers without installing Ollama locally.
 
-## Features
+## Why Ollama CLI?
 
-- List models available on a remote Ollama server
-- Configure connection to a remote Ollama server
-- Remove models from the Ollama server
-- Pull models from the Ollama server
-- More features coming soon!
+While Ollama provides its own CLI, it requires a local Ollama installation. Ollama CLI lets you manage remote Ollama servers from any machine without installing Ollama itself. Perfect for:
 
-## Installation
+- Managing Ollama on headless servers
+- Working with multiple Ollama instances across your network
+- Accessing Ollama from environments where installing it isn't practical
 
-### From Source
+## Quick Install
+```bash
+# macOS (Apple Silicon)
+curl -L https://github.com/masgari/ollama-cli/releases/download/v0.0.1/ollama-cli-darwin-arm64 -o ollama-cli
+# macOS (Intel)
+curl -L https://github.com/masgari/ollama-cli/releases/download/v0.0.1/ollama-cli-darwin-amd64 -o ollama-cli
+# Linux (x86_64)
+curl -L https://github.com/masgari/ollama-cli/releases/download/v0.0.1/ollama-cli-linux-amd64 -o ollama-cli
+
+# make executable
+chmod +x ollama-cli
+sudo mv ollama-cli /usr/local/bin/
+
+
+# for Windows (x86_64)
+curl -L https://github.com/masgari/ollama-cli/releases/download/v0.0.1/ollama-cli-windows-amd64.exe -o ollama-cli.exe
+```
+
+Or see [Installation from Source](#installation-from-source) below.
+
+## Key Features
+
+```bash
+ollama-cli -h
+
+ollama-cli is a command-line interface for interacting with a remote Ollama server.
+It allows you to manage models, run inferences, and more.
+
+Usage:
+  ollama-cli [command]
+
+Available Commands:
+  available   List models available on ollama.com
+  completion  Generate the autocompletion script for the specified shell
+  config      Configure the Ollama CLI
+  help        Help about any command
+  list        List models available on the Ollama server
+  pull        Pull a model from the Ollama server
+  rm          Remove a model from the Ollama server
+  version     Display the version of the CLI tool
+
+Flags:
+      --config string        config file (default is $HOME/.ollama-cli/config.yaml)
+  -c, --config-name string   config name to use (e.g. 'pc' for $HOME/.ollama-cli/pc.yaml)
+  -h, --help                 help for ollama-cli
+  -H, --host string          Ollama server host (default is localhost)
+      --no-color             Disable color output
+  -p, --port int             Ollama server port (default is 11434)
+  -v, --verbose              verbose output
+
+Use "ollama-cli [command] --help" for more information about a command.
+```
+
+### Discover Available Models
+
+Browse and search the entire Ollama model library without downloading anything:
+
+```bash
+# List all available models from Ollama's library
+ollama-cli available
+
+# Filter models by name
+ollama-cli avail -f deep
+NAME                  SIZE                                   UPDATED
+deepscaler           1.5b                                   3 weeks ago
+deepseek-r1          1.5b,7b,8b,14b,32b,70b,671b          4 weeks ago
+deepseek-v3          671b                                   1 month ago
+deepseek-v2.5        236b                                   5 months ago
+...
+
+# Show detailed model information
+ollama-cli avail --details
+```
+
+### Manage Multiple Ollama Servers
+
+Create and switch between configurations for different Ollama servers:
+
+```bash
+# Set up configurations for different servers
+ollama-cli config --host 192.168.1.90 # uses default config in ~/.ollama-cli/config.yaml
+
+ollama-cli -c pi5 config --host 192.168.1.100 # uses config in ~/.ollama-cli/pi5.yaml
+ollama-cli -c pc config --host 192.168.1.101 # uses config in ~/.ollama-cli/pc.yaml
+
+# Use a specific configuration
+ollama-cli -c pc list
+```
+
+### Manage Remote Models
+
+Work with models on your remote Ollama server:
+
+```bash
+# List models on the server
+ollama-cli list
+
+# Pull a model to the server
+ollama-cli pull llama3
+
+# Remove a model
+ollama-cli rm mistral
+```
+
+### Flexible Output Formats
+
+All commands support multiple output formats:
+
+```bash
+# Default table format
+ollama-cli list
+
+# Detailed view with all fields
+ollama-cli list --output wide
+
+# JSON output for scripting
+ollama-cli list --output json
+```
+
+## Configuration
+
+The CLI stores its configuration in `~/.ollama-cli/config.yaml`, created automatically on first run.
+
+```bash
+# View current configuration
+ollama-cli config
+
+# Update configuration
+ollama-cli config --host remote-server.example.com --port 11434
+
+# Override config for a single command
+ollama-cli --host 192.168.1.200 list
+```
+
+## Installation from Source
 
 ```bash
 # Clone the repository
 git clone https://github.com/masgari/ollama-cli.git
 cd ollama-cli
 
-# Build the binary
-go build -o build/ollama-cli
-
-# Install the binary (optional)
-sudo cp build/ollama-cli /usr/local/bin/
-```
-
-### Build Options
-
-```bash
-# Build for your current platform
+# Build for your platform
 make build
 
-# Build for all supported platforms
-make build-all
-
-# Build for a specific platform
+# Or build for a specific platform
 GOOS=linux GOARCH=amd64 make build
-```
-
-The compiled binaries will be placed in the `build/` directory.
-
-## Configuration
-
-The CLI tool stores its configuration in `~/.ollama-cli/config.yaml`. The configuration file is created automatically on first run with default values.
-
-### View Current Configuration
-
-```bash
-ollama-cli config
-```
-
-### Update Configuration
-
-```bash
-# Set the host and port
-ollama-cli config --host remote-server.example.com --port 11434
-
-# Or use the set command
-ollama-cli config set host remote-server.example.com
-ollama-cli config set port 11434
-```
-
-### Get Configuration Values
-
-```bash
-ollama-cli config get host
-ollama-cli config get port
-ollama-cli config get url
-```
-
-You can also override the configuration using command-line flags:
-
-```bash
-ollama-cli --host remote-server.example.com --port 11434 list
-```
-
-## Usage
-
-### List Models
-
-List all models available on the Ollama server:
-
-```bash
-ollama-cli list
-# or
-ollama-cli ls
-```
-
-#### Output Formats
-
-```bash
-# Default table format
-ollama-cli list
-
-# Show detailed information
-ollama-cli list --details
-
-# Wide format with all details
-ollama-cli list --output wide
-
-# JSON format
-ollama-cli list --output json
-```
-
-### Available Models (Remote)
-
-List all models available from the Ollama model library:
-
-```bash
-ollama-cli available
-# or
-ollama-cli avail
-```
-
-#### Filter Models
-
-You can filter models by name using the `-f` or `--filter` flag:
-
-```
-$ ollama-cli avail -f deep
-NAME                  SIZE                                   UPDATED
-deepscaler           1.5b                                   3 weeks ago
-deepseek-r1          1.5b,7b,8b,14b,32b,70b,671b          4 weeks ago
-deepseek-v3          671b                                   1 month ago
-deepseek-v2.5        236b                                   5 months ago
-deepseek-coder-v2    16b,236b                              6 months ago
-deepseek-v2          16b,236b                              8 months ago
-deepseek-coder       1.3b,6.7b,33b                         1 year ago
-deepseek-llm         7b,67b                                1 year ago
-```
-
-Note: In the terminal, this output is displayed with colors:
-- Model names appear in cyan
-- Sizes and timestamps appear in green
-- Headers appear in bright white
-
-#### Output Formats
-
-```bash
-# Default table format
-ollama-cli avail
-
-# Show detailed information including descriptions
-ollama-cli avail --details
-
-# Wide format showing all information
-ollama-cli avail --output wide
-
-# JSON format for programmatic use
-ollama-cli avail --output json
-```
-
-### Remove Models
-
-Remove a model from the Ollama server:
-
-```bash
-ollama-cli rm model-name
-# or
-ollama-cli delete model-name
-# or
-ollama-cli remove model-name
-```
-
-By default, the command will ask for confirmation before deleting the model. You can use the `--force` flag to skip the confirmation:
-
-```bash
-ollama-cli rm model-name --force
-# or
-ollama-cli rm model-name -f
-```
-
-### Pull Models
-
-Pull a model from the Ollama server:
-
-```bash
-ollama-cli pull model-name
-```
-
-This command will download the model and show the progress. The download may take some time depending on the model size and your internet connection.
-
-### Version
-
-Display the version of the CLI tool:
-
-```bash
-ollama-cli version
 ```
 
 ## License

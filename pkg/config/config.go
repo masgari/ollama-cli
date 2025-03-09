@@ -28,9 +28,17 @@ func (c *Config) GetServerURL() string {
 }
 
 // LoadConfig loads the configuration from the config file
-func LoadConfig() (*Config, error) {
-	configHome := getConfigDir()
-	configFile := filepath.Join(configHome, "config.yaml")
+// If configName is provided, it will load from that specific config file
+func LoadConfig(configName ...string) (*Config, error) {
+	configHome := GetConfigDir()
+
+	// Determine config file name based on provided configName
+	fileName := "config.yaml"
+	if len(configName) > 0 && configName[0] != "" {
+		fileName = configName[0] + ".yaml"
+	}
+
+	configFile := filepath.Join(configHome, fileName)
 
 	// Create config directory if it doesn't exist
 	if _, err := os.Stat(configHome); os.IsNotExist(err) {
@@ -66,9 +74,17 @@ func LoadConfig() (*Config, error) {
 }
 
 // SaveConfig saves the configuration to the config file
-func SaveConfig(config *Config) error {
-	configHome := getConfigDir()
-	configFile := filepath.Join(configHome, "config.yaml")
+// If configName is provided, it will save to that specific config file
+func SaveConfig(config *Config, configName ...string) error {
+	configHome := GetConfigDir()
+
+	// Determine config file name based on provided configName
+	fileName := "config.yaml"
+	if len(configName) > 0 && configName[0] != "" {
+		fileName = configName[0] + ".yaml"
+	}
+
+	configFile := filepath.Join(configHome, fileName)
 
 	viper.SetConfigFile(configFile)
 	viper.Set("host", config.Host)
@@ -77,8 +93,9 @@ func SaveConfig(config *Config) error {
 	return viper.WriteConfig()
 }
 
-// getConfigDir returns the path to the configuration directory
-func getConfigDir() string {
+// GetConfigDir returns the path to the configuration directory
+// This function is exported to allow overriding in tests
+var GetConfigDir = func() string {
 	homeDir, err := os.UserHomeDir()
 	if err != nil {
 		// Fallback to current directory if home directory can't be determined
