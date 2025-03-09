@@ -4,7 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"os"
+	"io"
 	"strings"
 	"text/tabwriter"
 	"time"
@@ -18,6 +18,7 @@ import (
 var (
 	outputFormat string
 	showDetails  bool
+	timeNow      = time.Now // For testing
 )
 
 // listCmd represents the list command
@@ -27,10 +28,8 @@ var listCmd = &cobra.Command{
 	Short:   "List models available on the Ollama server",
 	Long:    `List all models that are available on the remote Ollama server.`,
 	RunE: func(cmd *cobra.Command, args []string) error {
-		ollamaClient, err := client.New(cfg)
-		if err != nil {
-			return fmt.Errorf("failed to create Ollama client: %w", err)
-		}
+		// Get a client using the factory approach
+		ollamaClient := client.NewClient()
 
 		models, err := ollamaClient.ListModels(context.Background())
 		if err != nil {
@@ -39,18 +38,20 @@ var listCmd = &cobra.Command{
 
 		// If no models are available, print a message and return
 		if len(models.Models) == 0 {
-			output.Default.InfoPrintln("No models found on the Ollama server.")
+			fmt.Fprintln(cmd.OutOrStdout(), "No models found on the Ollama server.")
 			return nil
 		}
 
 		// Handle different output formats
 		switch strings.ToLower(outputFormat) {
 		case "json":
-			return outputJSON(models)
+			return outputJSON(cmd.OutOrStdout(), models)
 		case "wide":
-			return outputWide(models)
+			return outputWide(cmd.OutOrStdout(), models)
+		case "table":
+			return outputTable(cmd.OutOrStdout(), models, showDetails)
 		default:
-			return outputTable(models, showDetails)
+			return fmt.Errorf("invalid output format: %s", outputFormat)
 		}
 	},
 }
@@ -64,8 +65,8 @@ func init() {
 }
 
 // outputTable formats and displays the models in a table format
-func outputTable(models *api.ListResponse, showDetails bool) error {
-	w := tabwriter.NewWriter(os.Stdout, 0, 0, 3, ' ', 0)
+func outputTable(out io.Writer, models *api.ListResponse, showDetails bool) error {
+	w := tabwriter.NewWriter(out, 0, 0, 3, ' ', 0)
 
 	if showDetails {
 		fmt.Fprintln(w, output.MakeHeader("NAME\tSIZE\tMODIFIED\tQUANTIZATION\tFAMILY\tPARAMETERS"))
@@ -96,8 +97,8 @@ func outputTable(models *api.ListResponse, showDetails bool) error {
 }
 
 // outputWide formats and displays the models in a wide table format with all details
-func outputWide(models *api.ListResponse) error {
-	w := tabwriter.NewWriter(os.Stdout, 0, 0, 3, ' ', 0)
+func outputWide(out io.Writer, models *api.ListResponse) error {
+	w := tabwriter.NewWriter(out, 0, 0, 3, ' ', 0)
 	fmt.Fprintln(w, output.MakeHeader("NAME\tSIZE\tMODIFIED\tQUANTIZATION\tFAMILY\tPARAMETERS\tDIGEST"))
 
 	for _, model := range models.Models {
@@ -116,13 +117,13 @@ func outputWide(models *api.ListResponse) error {
 }
 
 // outputJSON outputs the models in JSON format
-func outputJSON(models *api.ListResponse) error {
+func outputJSON(out io.Writer, models *api.ListResponse) error {
 	jsonData, err := json.MarshalIndent(models, "", "  ")
 	if err != nil {
 		return fmt.Errorf("failed to marshal models to JSON: %w", err)
 	}
 
-	fmt.Println(string(jsonData))
+	fmt.Fprintln(out, string(jsonData))
 	return nil
 }
 
@@ -139,11 +140,11 @@ func formatSize(sizeInBytes int64) string {
 
 	switch {
 	case size >= GB:
-		return output.Info(fmt.Sprintf("%.2f GB", size/GB))
+		return output.Info(fmt.Sprintf("%.1f GB", size/GB))
 	case size >= MB:
-		return output.Info(fmt.Sprintf("%.2f MB", size/MB))
+		return output.Info(fmt.Sprintf("%.1f MB", size/MB))
 	case size >= KB:
-		return output.Info(fmt.Sprintf("%.2f KB", size/KB))
+		return output.Info(fmt.Sprintf("%.1f KB", size/KB))
 	default:
 		return output.Info(fmt.Sprintf("%d B", sizeInBytes))
 	}
@@ -151,7 +152,23 @@ func formatSize(sizeInBytes int64) string {
 
 // formatTime formats the time to a human-readable format
 func formatTime(t time.Time) string {
-	return output.Warning(t.Format("2006-01-02 15:04:05"))
+	now := timeNow()
+	diff := now.Sub(t)
+
+	switch {
+	case diff < time.Hour:
+		minutes := int(diff.Minutes())
+		return output.Warning(fmt.Sprintf("%d minutes ago", minutes))
+	case diff < 24*time.Hour:
+		hours := int(diff.Hours())
+		return output.Warning(fmt.Sprintf("%d hours ago", hours))
+	case diff < 30*24*time.Hour:
+		days := int(diff.Hours() / 24)
+		return output.Warning(fmt.Sprintf("%d days ago", days))
+	default:
+		months := int(diff.Hours() / 24 / 30)
+		return output.Warning(fmt.Sprintf("%d months ago", months))
+	}
 }
 
 // getOrDefault returns the value or a default if the value is empty
