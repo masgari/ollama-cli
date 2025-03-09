@@ -27,9 +27,6 @@ var listCmd = &cobra.Command{
 	Short:   "List models available on the Ollama server",
 	Long:    `List all models that are available on the remote Ollama server.`,
 	RunE: func(cmd *cobra.Command, args []string) error {
-		if verbose {
-			fmt.Printf("Using server URL: %s\n", cfg.GetServerURL())
-		}
 		ollamaClient, err := createOllamaClient()
 		if err != nil {
 			return err
