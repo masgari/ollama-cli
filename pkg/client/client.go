@@ -12,14 +12,58 @@ import (
 	"github.com/ollama/ollama/api"
 )
 
-// Client represents an Ollama API client
-type Client struct {
+// Client represents an Ollama API client interface
+type Client interface {
+	ListModels(ctx context.Context) (*api.ListResponse, error)
+	GetModelDetails(ctx context.Context, modelName string) (*api.ShowResponse, error)
+	DeleteModel(ctx context.Context, modelName string) error
+	PullModel(ctx context.Context, modelName string) error
+}
+
+// OllamaClient represents an Ollama API client implementation
+type OllamaClient struct {
 	apiClient *api.Client
 	config    *config.Config
 }
 
+// clientFactory is a function type that creates a new client
+type clientFactory func() (Client, error)
+
+// defaultClientFactory is the default implementation of clientFactory
+var defaultClientFactory clientFactory = func() (Client, error) {
+	cfg, err := config.LoadConfig()
+	if err != nil {
+		return nil, fmt.Errorf("failed to load config: %w", err)
+	}
+
+	return New(cfg)
+}
+
+// currentClientFactory is the current factory function to use
+var currentClientFactory = defaultClientFactory
+
+// SetClientFactory sets a custom client factory for testing
+func SetClientFactory(factory clientFactory) {
+	currentClientFactory = factory
+}
+
+// ResetClientFactory resets the client factory to the default
+func ResetClientFactory() {
+	currentClientFactory = defaultClientFactory
+}
+
+// NewClient creates a new client using the current factory
+func NewClient() Client {
+	client, err := currentClientFactory()
+	if err != nil {
+		// If there's an error, return a client that will return errors for all operations
+		return &errorClient{err: err}
+	}
+	return client
+}
+
 // New creates a new Ollama client
-func New(cfg *config.Config) (*Client, error) {
+func New(cfg *config.Config) (Client, error) {
 	serverURL, err := url.Parse(cfg.GetServerURL())
 	if err != nil {
 		return nil, fmt.Errorf("invalid server URL: %w", err)
@@ -32,14 +76,14 @@ func New(cfg *config.Config) (*Client, error) {
 
 	apiClient := api.NewClient(serverURL, httpClient)
 
-	return &Client{
+	return &OllamaClient{
 		apiClient: apiClient,
 		config:    cfg,
 	}, nil
 }
 
 // ListModels lists all models available on the Ollama server
-func (c *Client) ListModels(ctx context.Context) (*api.ListResponse, error) {
+func (c *OllamaClient) ListModels(ctx context.Context) (*api.ListResponse, error) {
 	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
 	defer cancel()
 
@@ -52,7 +96,7 @@ func (c *Client) ListModels(ctx context.Context) (*api.ListResponse, error) {
 }
 
 // GetModelDetails gets details for a specific model
-func (c *Client) GetModelDetails(ctx context.Context, modelName string) (*api.ShowResponse, error) {
+func (c *OllamaClient) GetModelDetails(ctx context.Context, modelName string) (*api.ShowResponse, error) {
 	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
 	defer cancel()
 
@@ -69,7 +113,7 @@ func (c *Client) GetModelDetails(ctx context.Context, modelName string) (*api.Sh
 }
 
 // DeleteModel deletes a model from the Ollama server
-func (c *Client) DeleteModel(ctx context.Context, modelName string) error {
+func (c *OllamaClient) DeleteModel(ctx context.Context, modelName string) error {
 	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
 	defer cancel()
 
@@ -85,7 +129,7 @@ func (c *Client) DeleteModel(ctx context.Context, modelName string) error {
 }
 
 // PullModel pulls a model from the Ollama server
-func (c *Client) PullModel(ctx context.Context, modelName string) error {
+func (c *OllamaClient) PullModel(ctx context.Context, modelName string) error {
 	ctx, cancel := context.WithTimeout(ctx, 30*time.Minute) // Longer timeout for model downloads
 	defer cancel()
 
@@ -106,4 +150,25 @@ func (c *Client) PullModel(ctx context.Context, modelName string) error {
 	}
 
 	return nil
+}
+
+// errorClient is a client that returns errors for all operations
+type errorClient struct {
+	err error
+}
+
+func (c *errorClient) ListModels(ctx context.Context) (*api.ListResponse, error) {
+	return nil, c.err
+}
+
+func (c *errorClient) GetModelDetails(ctx context.Context, modelName string) (*api.ShowResponse, error) {
+	return nil, c.err
+}
+
+func (c *errorClient) DeleteModel(ctx context.Context, modelName string) error {
+	return c.err
+}
+
+func (c *errorClient) PullModel(ctx context.Context, modelName string) error {
+	return c.err
 }
