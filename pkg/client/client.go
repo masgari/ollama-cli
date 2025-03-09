@@ -31,7 +31,8 @@ type clientFactory func() (Client, error)
 
 // defaultClientFactory is the default implementation of clientFactory
 var defaultClientFactory clientFactory = func() (Client, error) {
-	cfg, err := config.LoadConfig()
+	// Load config using the global configuration name
+	cfg, err := config.LoadConfig(config.CurrentConfigName)
 	if err != nil {
 		return nil, fmt.Errorf("failed to load config: %w", err)
 	}
@@ -60,6 +61,11 @@ func NewClient() Client {
 		return &errorClient{err: err}
 	}
 	return client
+}
+
+// NewClientWithConfig creates a new client with the provided configuration
+func NewClientWithConfig(cfg *config.Config) (Client, error) {
+	return New(cfg)
 }
 
 // New creates a new Ollama client

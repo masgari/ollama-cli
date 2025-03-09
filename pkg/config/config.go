@@ -8,6 +8,9 @@ import (
 	"github.com/spf13/viper"
 )
 
+// CurrentConfigName holds the name of the current configuration
+var CurrentConfigName string
+
 // Config holds the configuration for the Ollama CLI
 type Config struct {
 	Host string `mapstructure:"host"`
