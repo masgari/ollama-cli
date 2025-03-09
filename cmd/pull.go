@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/masgari/ollama-cli/pkg/client"
 	"github.com/masgari/ollama-cli/pkg/output"
 	"github.com/spf13/cobra"
 )
@@ -18,9 +17,9 @@ var pullCmd = &cobra.Command{
 	RunE: func(cmd *cobra.Command, args []string) error {
 		modelName := args[0]
 
-		ollamaClient, err := client.New(cfg)
+		ollamaClient, err := createOllamaClient()
 		if err != nil {
-			return fmt.Errorf("failed to create Ollama client: %w", err)
+			return err
 		}
 
 		output.Default.InfoPrintf("Pulling model '%s'...\n", output.Highlight(modelName))

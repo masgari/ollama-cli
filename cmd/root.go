@@ -18,6 +18,11 @@ var (
 	verbose    bool
 )
 
+// GetConfig returns the current configuration
+func GetConfig() *config.Config {
+	return cfg
+}
+
 // rootCmd represents the base command when called without any subcommands
 var rootCmd = &cobra.Command{
 	Use:   "ollama-cli",
@@ -29,6 +34,9 @@ It allows you to manage models, run inferences, and more.`,
 		if noColor {
 			output.DisableColors()
 		}
+
+		// Set the global configuration name
+		config.CurrentConfigName = configName
 
 		var err error
 		cfg, err = config.LoadConfig(configName)

@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/masgari/ollama-cli/pkg/client"
 	"github.com/masgari/ollama-cli/pkg/output"
 	"github.com/spf13/cobra"
 )
@@ -23,9 +22,9 @@ var rmCmd = &cobra.Command{
 	RunE: func(cmd *cobra.Command, args []string) error {
 		modelName := args[0]
 
-		ollamaClient, err := client.New(cfg)
+		ollamaClient, err := createOllamaClient()
 		if err != nil {
-			return fmt.Errorf("failed to create Ollama client: %w", err)
+			return err
 		}
 
 		// Check if the model exists
@@ -48,7 +47,7 @@ var rmCmd = &cobra.Command{
 
 		// Confirm deletion if not forced
 		if !forceDelete {
-			fmt.Printf("Are you sure you want to delete model '%s'? (y/N): ", output.Highlight(modelName))
+			fmt.Fprintf(cmd.OutOrStdout(), "Are you sure you want to delete model '%s'? (y/N): ", output.Highlight(modelName))
 			var confirm string
 			fmt.Scanln(&confirm)
 			if confirm != "y" && confirm != "Y" {

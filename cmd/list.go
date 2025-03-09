@@ -9,7 +9,6 @@ import (
 	"text/tabwriter"
 	"time"
 
-	"github.com/masgari/ollama-cli/pkg/client"
 	"github.com/masgari/ollama-cli/pkg/output"
 	"github.com/ollama/ollama/api"
 	"github.com/spf13/cobra"
@@ -28,8 +27,10 @@ var listCmd = &cobra.Command{
 	Short:   "List models available on the Ollama server",
 	Long:    `List all models that are available on the remote Ollama server.`,
 	RunE: func(cmd *cobra.Command, args []string) error {
-		// Get a client using the factory approach
-		ollamaClient := client.NewClient()
+		ollamaClient, err := createOllamaClient()
+		if err != nil {
+			return err
+		}
 
 		models, err := ollamaClient.ListModels(context.Background())
 		if err != nil {
