@@ -11,10 +11,11 @@ import (
 )
 
 var (
-	cfgFile string
-	cfg     *config.Config
-	noColor bool
-	verbose bool
+	cfgFile    string
+	configName string
+	cfg        *config.Config
+	noColor    bool
+	verbose    bool
 )
 
 // rootCmd represents the base command when called without any subcommands
@@ -30,7 +31,7 @@ It allows you to manage models, run inferences, and more.`,
 		}
 
 		var err error
-		cfg, err = config.LoadConfig()
+		cfg, err = config.LoadConfig(configName)
 		if err != nil {
 			return fmt.Errorf("failed to load config: %w", err)
 		}
@@ -62,6 +63,7 @@ func init() {
 	cobra.OnInitialize(initConfig)
 
 	rootCmd.PersistentFlags().StringVar(&cfgFile, "config", "", "config file (default is $HOME/.ollama-cli/config.yaml)")
+	rootCmd.PersistentFlags().StringVarP(&configName, "config-name", "c", "", "config name to use (e.g. 'pc' for $HOME/.ollama-cli/pc.yaml)")
 	rootCmd.PersistentFlags().StringP("host", "H", "", "Ollama server host (default is localhost)")
 	rootCmd.PersistentFlags().IntP("port", "p", 0, "Ollama server port (default is 11434)")
 	rootCmd.PersistentFlags().BoolVar(&noColor, "no-color", false, "Disable color output")
@@ -84,7 +86,13 @@ func initConfig() {
 		// Search config in home directory with name ".ollama-cli" (without extension).
 		viper.AddConfigPath(home + "/.ollama-cli")
 		viper.SetConfigType("yaml")
-		viper.SetConfigName("config")
+
+		// If configName is provided, use that as the config name
+		if configName != "" {
+			viper.SetConfigName(configName)
+		} else {
+			viper.SetConfigName("config")
+		}
 	}
 
 	viper.AutomaticEnv() // read in environment variables that match

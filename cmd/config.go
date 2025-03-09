@@ -2,7 +2,9 @@ package cmd
 
 import (
 	"fmt"
+	"os"
 	"strconv"
+	"strings"
 
 	"github.com/masgari/ollama-cli/pkg/config"
 	"github.com/masgari/ollama-cli/pkg/output"
@@ -23,6 +25,9 @@ var configCmd = &cobra.Command{
 		// If no flags are provided, show the current configuration
 		if configHost == "" && configPort == 0 {
 			output.Default.HeaderPrintln("Current configuration:")
+			if configName != "" {
+				fmt.Printf("  Config: %s\n", output.Highlight(configName))
+			}
 			fmt.Printf("  Host: %s\n", output.Highlight(cfg.Host))
 			fmt.Printf("  Port: %s\n", output.Highlight(strconv.Itoa(cfg.Port)))
 			fmt.Printf("  URL:  %s\n", output.Highlight(cfg.GetServerURL()))
@@ -38,12 +43,15 @@ var configCmd = &cobra.Command{
 		}
 
 		// Save the configuration
-		if err := config.SaveConfig(cfg); err != nil {
+		if err := config.SaveConfig(cfg, configName); err != nil {
 			output.Default.ErrorPrintf("Error saving configuration: %v\n", err)
 			return
 		}
 
 		output.Default.SuccessPrintln("Configuration updated successfully:")
+		if configName != "" {
+			fmt.Printf("  Config: %s\n", output.Highlight(configName))
+		}
 		fmt.Printf("  Host: %s\n", output.Highlight(cfg.Host))
 		fmt.Printf("  Port: %s\n", output.Highlight(strconv.Itoa(cfg.Port)))
 		fmt.Printf("  URL:  %s\n", output.Highlight(cfg.GetServerURL()))
@@ -76,7 +84,7 @@ var configSetCmd = &cobra.Command{
 		}
 
 		// Save the configuration
-		if err := config.SaveConfig(cfg); err != nil {
+		if err := config.SaveConfig(cfg, configName); err != nil {
 			output.Default.ErrorPrintf("Error saving configuration: %v\n", err)
 			return
 		}
@@ -108,10 +116,50 @@ var configGetCmd = &cobra.Command{
 	},
 }
 
+// configListCmd represents the config list command
+var configListCmd = &cobra.Command{
+	Use:   "list",
+	Short: "List all available configurations",
+	Long:  `List all available configuration files in the Ollama CLI config directory.`,
+	Run: func(cmd *cobra.Command, args []string) {
+		// Get the config directory
+		configDir := config.GetConfigDir()
+
+		// Check if the directory exists
+		if _, err := os.Stat(configDir); os.IsNotExist(err) {
+			output.Default.ErrorPrintln("Config directory does not exist")
+			return
+		}
+
+		// List all YAML files in the directory
+		files, err := os.ReadDir(configDir)
+		if err != nil {
+			output.Default.ErrorPrintf("Error reading config directory: %v\n", err)
+			return
+		}
+
+		output.Default.HeaderPrintln("Available configurations:")
+
+		found := false
+		for _, file := range files {
+			if !file.IsDir() && strings.HasSuffix(file.Name(), ".yaml") {
+				configName := strings.TrimSuffix(file.Name(), ".yaml")
+				fmt.Printf("  %s\n", output.Highlight(configName))
+				found = true
+			}
+		}
+
+		if !found {
+			fmt.Println("  No configuration files found")
+		}
+	},
+}
+
 func init() {
 	rootCmd.AddCommand(configCmd)
 	configCmd.AddCommand(configSetCmd)
 	configCmd.AddCommand(configGetCmd)
+	configCmd.AddCommand(configListCmd)
 
 	// Add flags for the config command
 	configCmd.Flags().StringVar(&configHost, "host", "", "Ollama server host")
