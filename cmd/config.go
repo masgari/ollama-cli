@@ -3,7 +3,6 @@ package cmd
 import (
 	"fmt"
 	"os"
-	"path/filepath"
 	"strconv"
 	"strings"
 
@@ -124,12 +123,7 @@ var configListCmd = &cobra.Command{
 	Long:  `List all available configuration files in the Ollama CLI config directory.`,
 	Run: func(cmd *cobra.Command, args []string) {
 		// Get the config directory
-		homeDir, err := os.UserHomeDir()
-		if err != nil {
-			output.Default.ErrorPrintf("Error getting home directory: %v\n", err)
-			return
-		}
-		configDir := filepath.Join(homeDir, ".ollama-cli")
+		configDir := config.GetConfigDir()
 
 		// Check if the directory exists
 		if _, err := os.Stat(configDir); os.IsNotExist(err) {
