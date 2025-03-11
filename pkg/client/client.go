@@ -171,7 +171,16 @@ func (c *OllamaClient) PullModel(ctx context.Context, modelName string) error {
 
 	if err := client.Pull(ctx, req, func(progress api.ProgressResponse) error {
 		if progress.Status != "" {
-			fmt.Printf("\r%s: %s", output.Highlight(modelName), output.Info(progress.Status))
+			// Calculate percentage if total is available
+			var percentStr string
+			var sizeStr string
+			if progress.Total > 0 {
+				percent := float64(progress.Completed) / float64(progress.Total) * 100
+				percentStr = fmt.Sprintf("[%s] ", output.Info(fmt.Sprintf("%.1f%%", percent)))
+				sizeStr = fmt.Sprintf("[%s] ", output.Warning(fmt.Sprintf("%.1f/%.1f MB", float64(progress.Completed)/1024/1024, float64(progress.Total)/1024/1024)))
+			}
+
+			fmt.Printf("\r%s: %s%s%s", output.Highlight(modelName), percentStr, sizeStr, output.Info(progress.Status))
 			if progress.Total > 0 && progress.Completed == progress.Total {
 				fmt.Println() // Add newline when complete
 			}
