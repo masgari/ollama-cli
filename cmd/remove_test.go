@@ -5,6 +5,7 @@ import (
 	"errors"
 	"io"
 	"os"
+	"sync"
 	"testing"
 
 	"github.com/masgari/ollama-cli/pkg/client"
@@ -15,6 +16,24 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 )
+
+// safeBuffer provides a thread-safe buffer implementation
+type safeBuffer struct {
+	mu  sync.Mutex
+	buf bytes.Buffer
+}
+
+func (b *safeBuffer) Write(p []byte) (n int, err error) {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+	return b.buf.Write(p)
+}
+
+func (b *safeBuffer) String() string {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+	return b.buf.String()
+}
 
 func TestRemoveCommand(t *testing.T) {
 	// Save original output and restore it after the test
@@ -270,8 +289,8 @@ func TestRemoveCommandWithoutForceFlag(t *testing.T) {
 }
 
 func TestRemoveCommandWithoutForceFlagCancelled(t *testing.T) {
-	// Create a buffer to capture output
-	var buf bytes.Buffer
+	// Create a thread-safe buffer to capture output
+	var buf safeBuffer
 
 	// Create a root command and add the rm command to it
 	rootCmd := &cobra.Command{Use: "ollama-cli"}
@@ -303,7 +322,7 @@ func TestRemoveCommandWithoutForceFlagCancelled(t *testing.T) {
 	origOutput := output.Default
 	defer func() { output.Default = origOutput }()
 
-	// Create a custom output instance that writes to our buffer
+	// Create a custom output instance that writes to our thread-safe buffer
 	testOutput := output.NewColorWriter(&buf)
 	output.Default = testOutput
 
@@ -329,7 +348,7 @@ func TestRemoveCommandWithoutForceFlagCancelled(t *testing.T) {
 	go func() {
 		var stdoutBuf bytes.Buffer
 		io.Copy(&stdoutBuf, pr)
-		// Add the stdout output to our buffer
+		// Add the stdout output to our thread-safe buffer
 		buf.Write(stdoutBuf.Bytes())
 	}()
 
@@ -346,8 +365,10 @@ func TestRemoveCommandWithoutForceFlagCancelled(t *testing.T) {
 	// Check that there was no error
 	assert.NoError(t, err, "Command should not return an error when cancelling deletion")
 
-	// Check the output
+	// Get the output from our thread-safe buffer
 	output := buf.String()
+
+	// Check the output
 	assert.Contains(t, output, "Are you sure you want to delete model", "Output should contain confirmation prompt")
 	assert.Contains(t, output, "Deletion cancelled", "Output should indicate cancellation")
 	assert.NotContains(t, output, "Model 'model1' deleted successfully", "Output should not indicate successful deletion")
