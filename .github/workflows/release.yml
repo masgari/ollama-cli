@@ -23,7 +23,8 @@ jobs:
         check-latest: true
     
     - name: Build all platforms
-      run: make build-all
+      run: |
+        VERSION=${GITHUB_REF#refs/tags/} make build-all
     
     - name: List build directory contents
       run: ls -lash build/

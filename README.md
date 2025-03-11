@@ -13,11 +13,11 @@ While Ollama provides its own CLI, it requires a local Ollama installation. Olla
 ## Quick Install
 ```bash
 # macOS (Apple Silicon)
-curl -L https://github.com/masgari/ollama-cli/releases/download/v0.0.1/ollama-cli-darwin-arm64 -o ollama-cli
+curl -L https://github.com/masgari/ollama-cli/releases/latest/download/ollama-cli-darwin-arm64 -o ollama-cli
 # macOS (Intel)
-curl -L https://github.com/masgari/ollama-cli/releases/download/v0.0.1/ollama-cli-darwin-amd64 -o ollama-cli
+curl -L https://github.com/masgari/ollama-cli/releases/latest/download/ollama-cli-darwin-amd64 -o ollama-cli
 # Linux (x86_64)
-curl -L https://github.com/masgari/ollama-cli/releases/download/v0.0.1/ollama-cli-linux-amd64 -o ollama-cli
+curl -L https://github.com/masgari/ollama-cli/releases/latest/download/ollama-cli-linux-amd64 -o ollama-cli
 
 # make executable
 chmod +x ollama-cli
@@ -25,7 +25,7 @@ sudo mv ollama-cli /usr/local/bin/
 
 
 # for Windows (x86_64)
-curl -L https://github.com/masgari/ollama-cli/releases/download/v0.0.1/ollama-cli-windows-amd64.exe -o ollama-cli.exe
+curl -L https://github.com/masgari/ollama-cli/releases/latest/download/ollama-cli-windows-amd64.exe -o ollama-cli.exe
 ```
 
 Or see [Installation from Source](#installation-from-source) below.
