@@ -38,7 +38,7 @@ clean:
 # Run tests
 test:
 	@echo "Running tests..."
-	@go test -v ./...
+	@go test -v -count=1 -race -timeout=10m ./...
 
 # Install the binary
 install: build

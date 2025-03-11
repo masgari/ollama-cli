@@ -7,6 +7,9 @@ import (
 	"net/url"
 	"time"
 
+	"errors"
+	"net"
+
 	"github.com/masgari/ollama-cli/pkg/config"
 	"github.com/masgari/ollama-cli/pkg/output"
 	"github.com/ollama/ollama/api"
@@ -22,7 +25,7 @@ type Client interface {
 
 // OllamaClient represents an Ollama API client implementation
 type OllamaClient struct {
-	apiClient *api.Client
+	serverURL *url.URL
 	config    *config.Config
 }
 
@@ -75,26 +78,39 @@ func New(cfg *config.Config) (Client, error) {
 		return nil, fmt.Errorf("invalid server URL: %w", err)
 	}
 
-	// Create a new HTTP client with a timeout
-	httpClient := &http.Client{
-		Timeout: 30 * time.Second,
-	}
-
-	apiClient := api.NewClient(serverURL, httpClient)
-
 	return &OllamaClient{
-		apiClient: apiClient,
+		serverURL: serverURL,
 		config:    cfg,
 	}, nil
 }
 
+// createClient creates a new HTTP client with the specified timeout
+func (c *OllamaClient) createClient(timeout time.Duration, forPull bool) *api.Client {
+	transport := &http.Transport{
+		DisableKeepAlives: !forPull, // Enable keep-alive for pull operations
+		// Add other necessary transport settings
+		MaxIdleConns:       100,
+		IdleConnTimeout:    90 * time.Second,
+		DisableCompression: false,
+	}
+
+	return api.NewClient(c.serverURL, &http.Client{
+		Timeout:   timeout,
+		Transport: transport,
+	})
+}
+
 // ListModels lists all models available on the Ollama server
 func (c *OllamaClient) ListModels(ctx context.Context) (*api.ListResponse, error) {
-	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
+	ctx, cancel := context.WithTimeout(ctx, 30*time.Second)
 	defer cancel()
 
-	models, err := c.apiClient.List(ctx)
+	client := c.createClient(30*time.Second, false)
+	models, err := client.List(ctx)
 	if err != nil {
+		if isTimeoutError(err) {
+			return nil, fmt.Errorf("timeout while listing models: %w", err)
+		}
 		return nil, fmt.Errorf("failed to list models: %w", err)
 	}
 
@@ -106,12 +122,16 @@ func (c *OllamaClient) GetModelDetails(ctx context.Context, modelName string) (*
 	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
 	defer cancel()
 
+	client := c.createClient(10*time.Second, false)
 	req := &api.ShowRequest{
 		Model: modelName,
 	}
 
-	model, err := c.apiClient.Show(ctx, req)
+	model, err := client.Show(ctx, req)
 	if err != nil {
+		if isTimeoutError(err) {
+			return nil, fmt.Errorf("timeout while getting model details: %w", err)
+		}
 		return nil, fmt.Errorf("failed to get model details: %w", err)
 	}
 
@@ -123,11 +143,15 @@ func (c *OllamaClient) DeleteModel(ctx context.Context, modelName string) error 
 	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
 	defer cancel()
 
+	client := c.createClient(10*time.Second, false)
 	req := &api.DeleteRequest{
 		Model: modelName,
 	}
 
-	if err := c.apiClient.Delete(ctx, req); err != nil {
+	if err := client.Delete(ctx, req); err != nil {
+		if isTimeoutError(err) {
+			return fmt.Errorf("timeout while deleting model: %w", err)
+		}
 		return fmt.Errorf("failed to delete model: %w", err)
 	}
 
@@ -136,26 +160,54 @@ func (c *OllamaClient) DeleteModel(ctx context.Context, modelName string) error 
 
 // PullModel pulls a model from the Ollama server
 func (c *OllamaClient) PullModel(ctx context.Context, modelName string) error {
-	ctx, cancel := context.WithTimeout(ctx, 30*time.Minute) // Longer timeout for model downloads
+	// Use a very long timeout for pull operations (4 hours)
+	ctx, cancel := context.WithTimeout(ctx, 4*time.Hour)
 	defer cancel()
 
+	client := c.createClient(4*time.Hour, true) // Enable keep-alive for pull
 	req := &api.PullRequest{
 		Name: modelName,
 	}
 
-	if err := c.apiClient.Pull(ctx, req, func(progress api.ProgressResponse) error {
+	if err := client.Pull(ctx, req, func(progress api.ProgressResponse) error {
 		if progress.Status != "" {
-			fmt.Printf("\r%s: %s", output.Highlight(modelName), output.Info(progress.Status))
+			// Calculate percentage if total is available
+			var percentStr string
+			var sizeStr string
+			if progress.Total > 0 {
+				percent := float64(progress.Completed) / float64(progress.Total) * 100
+				percentStr = fmt.Sprintf("[%s] ", output.Info(fmt.Sprintf("%.1f%%", percent)))
+				sizeStr = fmt.Sprintf("[%s] ", output.Warning(fmt.Sprintf("%.1f/%.1f MB", float64(progress.Completed)/1024/1024, float64(progress.Total)/1024/1024)))
+			}
+
+			fmt.Printf("\r%s: %s%s%s", output.Highlight(modelName), percentStr, sizeStr, output.Info(progress.Status))
 			if progress.Total > 0 && progress.Completed == progress.Total {
 				fmt.Println() // Add newline when complete
 			}
 		}
 		return nil
 	}); err != nil {
+		if isTimeoutError(err) {
+			return fmt.Errorf("timeout while pulling model (operation took longer than 4 hours): %w", err)
+		}
 		return fmt.Errorf("failed to pull model: %w", err)
 	}
 
 	return nil
+}
+
+// isTimeoutError checks if the error is a timeout error
+func isTimeoutError(err error) bool {
+	if err == nil {
+		return false
+	}
+
+	var netErr net.Error
+	if errors.As(err, &netErr) && netErr.Timeout() {
+		return true
+	}
+
+	return errors.Is(err, context.DeadlineExceeded)
 }
 
 // errorClient is a client that returns errors for all operations

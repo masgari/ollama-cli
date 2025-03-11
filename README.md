@@ -104,14 +104,26 @@ ollama-cli -c pc list
 Work with models on your remote Ollama server:
 
 ```bash
+
 # List models on the server
 ollama-cli list
+NAME                   SIZE                MODIFIED
+phi4-mini:3.8b       2.3 GB     2 days ago
+llava-phi3:latest    2.7 GB     1 months ago
+...
+
+# check available models
+ollama-cli available --filter smallthinker
+NAME             SIZE          UPDATED
+smallthinker   3b   1 month ago
 
 # Pull a model to the server
-ollama-cli pull llama3
+ollama-cli pull smallthinker:3b
+Pulling model 'smallthinker:3b'...
+smallthinker:3b: [57.1%] [1967.8/3448.6 MB] pulling ad361f123f77
 
 # Remove a model
-ollama-cli rm mistral
+ollama-cli rm smallthinker:3b
 ```
 
 ### Flexible Output Formats
