@@ -1,4 +1,4 @@
-.PHONY: build build-all clean
+.PHONY: build build-all clean test unit-test integration-test
 
 # Binary name
 BINARY_NAME=ollama-cli
@@ -38,10 +38,19 @@ clean:
 	@echo "Cleaning build directory..."
 	@rm -rf $(BUILD_DIR)
 
-# Run tests
-test:
-	@echo "Running tests..."
-	@go test -v -count=1 -race -timeout=10m ./...
+# Run unit tests (fast, no external dependencies)
+unit-test:
+	@echo "Running unit tests..."
+	@go test -v -count=1 -race -short -timeout=5m ./...
+
+# Run integration tests (may make external network calls)
+integration-test:
+	@echo "Running integration tests..."
+	@go test -v -count=1 -race -tags=integration -timeout=10m ./...
+
+# Run all tests (both unit and integration)
+test: unit-test integration-test
+	@echo "All tests completed successfully!"
 
 # Install the binary
 install: build

@@ -3,6 +3,7 @@ package cmd
 import (
 	"context"
 	"fmt"
+	"net/http"
 	"strings"
 	"time"
 
@@ -14,6 +15,8 @@ import (
 var (
 	filterName string
 	timeout    int
+	limit      int
+	maxSize    float64
 )
 
 // availableCmd represents the available command
@@ -31,8 +34,16 @@ var availableCmd = &cobra.Command{
 		ctx, cancel := context.WithTimeout(context.Background(), time.Duration(timeout)*time.Second)
 		defer cancel()
 
-		// Fetch available models
-		models, err := available.FetchModels(ctx, timeout)
+		// Create HTTP client with timeout
+		client := &http.Client{
+			Timeout: time.Duration(timeout) * time.Second,
+		}
+
+		// Create ModelFetcher with the client
+		fetcher := available.NewModelFetcher(client, "https://ollama.com/search")
+
+		// Fetch available models using the fetcher
+		models, err := fetcher.FetchModels(ctx)
 		if err != nil {
 			return fmt.Errorf("failed to fetch available models: %w", err)
 		}
@@ -40,25 +51,51 @@ var availableCmd = &cobra.Command{
 		// Filter models if filter is provided
 		models = available.FilterByName(models, filterName)
 
+		// Filter models by size if maxSize is provided
+		models = available.FilterBySize(models, maxSize)
+
+		// Create a custom output writer that writes to the command's output buffer
+		out := output.NewColorWriter(cmd.OutOrStdout())
+
 		// If no models are available, print a message and return
 		if len(models) == 0 {
-			if filterName != "" {
-				output.Default.InfoPrintln(fmt.Sprintf("No models found matching '%s' on ollama.com.", filterName))
+			if filterName != "" && maxSize > 0 {
+				out.InfoPrintln(fmt.Sprintf("No models found matching '%s' with size <= %gb on ollama.com.", filterName, maxSize))
+			} else if filterName != "" {
+				out.InfoPrintln(fmt.Sprintf("No models found matching '%s' on ollama.com.", filterName))
+			} else if maxSize > 0 {
+				out.InfoPrintln(fmt.Sprintf("No models found with size <= %gb on ollama.com.", maxSize))
 			} else {
-				output.Default.InfoPrintln("No models found on ollama.com.")
+				out.InfoPrintln("No models found on ollama.com.")
 			}
 			return nil
 		}
 
+		// Store the total count before applying limit
+		totalCount := len(models)
+
+		// Apply limit if specified and valid
+		if limit > 0 && limit < len(models) {
+			models = models[:limit]
+		}
+
 		// Handle different output formats
+		var outputErr error
 		switch strings.ToLower(outputFormat) {
 		case "json":
-			return available.OutputJSON(models)
+			outputErr = available.OutputJSONWithWriter(cmd.OutOrStdout(), models)
 		case "wide":
-			return available.OutputWide(models)
+			outputErr = available.OutputWideWithWriter(cmd.OutOrStdout(), models)
 		default:
-			return available.OutputTable(models, showDetails)
+			outputErr = available.OutputTableWithWriter(cmd.OutOrStdout(), models, showDetails)
 		}
+
+		// If we limited the output, show a message about how many models were displayed
+		if limit > 0 && limit < totalCount {
+			out.InfoPrintln(fmt.Sprintf("Displaying %d of %d models. Use --limit=-1 to show all.", limit, totalCount))
+		}
+
+		return outputErr
 	},
 }
 
@@ -70,4 +107,6 @@ func init() {
 	availableCmd.Flags().BoolP("details", "d", false, "Show detailed information about models")
 	availableCmd.Flags().StringVarP(&filterName, "filter", "f", "", "Filter models by name")
 	availableCmd.Flags().IntVarP(&timeout, "timeout", "t", 30, "Timeout in seconds for the HTTP request")
+	availableCmd.Flags().IntVarP(&limit, "limit", "l", 10, "Limit the number of models displayed (-1 for all)")
+	availableCmd.Flags().Float64VarP(&maxSize, "size", "s", 0, "Filter models by maximum size in billions (e.g., 7 for 7B models)")
 }

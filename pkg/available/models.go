@@ -22,15 +22,25 @@ type Model struct {
 	Updated     string `json:"updated,omitempty"`
 }
 
-// FetchModels fetches the list of available models from ollama.com/search
-func FetchModels(ctx context.Context, timeout int) ([]Model, error) {
-	// Create HTTP client
-	client := &http.Client{
-		Timeout: time.Duration(timeout) * time.Second,
-	}
+// ModelFetcher is responsible for fetching models from a remote server
+// It allows dependency injection for testability
+type ModelFetcher struct {
+	client *http.Client
+	url    string
+}
 
+// NewModelFetcher creates a new ModelFetcher with the given HTTP client and URL
+func NewModelFetcher(client *http.Client, url string) *ModelFetcher {
+	return &ModelFetcher{
+		client: client,
+		url:    url,
+	}
+}
+
+// FetchModels fetches the list of available models from the specified URL
+func (mf *ModelFetcher) FetchModels(ctx context.Context) ([]Model, error) {
 	// Create request
-	req, err := http.NewRequestWithContext(ctx, "GET", "https://ollama.com/search", nil)
+	req, err := http.NewRequestWithContext(ctx, "GET", mf.url, nil)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create request: %w", err)
 	}
@@ -39,7 +49,7 @@ func FetchModels(ctx context.Context, timeout int) ([]Model, error) {
 	req.Header.Set("User-Agent", "ollama-cli")
 
 	// Send request
-	resp, err := client.Do(req)
+	resp, err := mf.client.Do(req)
 	if err != nil {
 		return nil, fmt.Errorf("failed to send request: %w", err)
 	}
@@ -63,6 +73,15 @@ func FetchModels(ctx context.Context, timeout int) ([]Model, error) {
 	}
 
 	return models, nil
+}
+
+// Update the existing FetchModels function to use ModelFetcher
+func FetchModels(ctx context.Context, timeout int) ([]Model, error) {
+	client := &http.Client{
+		Timeout: time.Duration(timeout) * time.Second,
+	}
+	fetcher := NewModelFetcher(client, "https://ollama.com/search")
+	return fetcher.FetchModels(ctx)
 }
 
 // parseModels parses the HTML response from ollama.com/search
@@ -240,6 +259,31 @@ func FilterByName(models []Model, filterName string) []Model {
 	for _, model := range models {
 		if strings.Contains(strings.ToLower(model.Name), strings.ToLower(filterName)) {
 			filteredModels = append(filteredModels, model)
+		}
+	}
+	return filteredModels
+}
+
+// FilterBySize filters models by their maximum size
+// maxSize is the maximum size in billions (e.g., 7 for 7B models)
+// If maxSize is <= 0, no filtering is applied
+func FilterBySize(models []Model, maxSize float64) []Model {
+	if maxSize <= 0 {
+		return models
+	}
+
+	filteredModels := []Model{}
+	for _, model := range models {
+		// Split the size string which may contain multiple sizes
+		sizes := strings.Split(model.Size, ", ")
+
+		// Check if any size is less than or equal to maxSize
+		for _, sizeStr := range sizes {
+			size := extractNumericValue(sizeStr)
+			if size <= maxSize {
+				filteredModels = append(filteredModels, model)
+				break
+			}
 		}
 	}
 	return filteredModels
