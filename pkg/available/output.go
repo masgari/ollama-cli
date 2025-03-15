@@ -3,6 +3,7 @@ package available
 import (
 	"encoding/json"
 	"fmt"
+	"io"
 	"os"
 	"regexp"
 	"strconv"
@@ -15,24 +16,29 @@ import (
 
 // OutputTable formats and displays the models in a table format
 func OutputTable(models []Model, showDetails bool) error {
-	w := tabwriter.NewWriter(os.Stdout, 0, 0, 3, ' ', 0)
+	return OutputTableWithWriter(os.Stdout, models, showDetails)
+}
+
+// OutputTableWithWriter formats and displays the models in a table format using the provided writer
+func OutputTableWithWriter(w io.Writer, models []Model, showDetails bool) error {
+	tw := tabwriter.NewWriter(w, 0, 0, 3, ' ', 0)
 
 	if showDetails {
-		fmt.Fprintln(w, output.MakeHeader("NAME\tSIZE\tUPDATED\tDESCRIPTION"))
+		fmt.Fprintln(tw, output.MakeHeader("NAME\tSIZE\tUPDATED\tDESCRIPTION"))
 	} else {
-		fmt.Fprintln(w, output.MakeHeader("NAME\tSIZE\tUPDATED"))
+		fmt.Fprintln(tw, output.MakeHeader("NAME\tSIZE\tUPDATED"))
 	}
 
 	for _, model := range models {
 		if showDetails {
-			fmt.Fprintf(w, "%s\t%s\t%s\t%s\n",
+			fmt.Fprintf(tw, "%s\t%s\t%s\t%s\n",
 				output.Highlight(model.Name),
 				output.Info(formatSize(model.Size)),
 				output.Info(formatUpdated(model.Updated)),
 				getOrDefault(model.Description, ""),
 			)
 		} else {
-			fmt.Fprintf(w, "%s\t%s\t%s\n",
+			fmt.Fprintf(tw, "%s\t%s\t%s\n",
 				output.Highlight(model.Name),
 				output.Info(formatSize(model.Size)),
 				output.Info(formatUpdated(model.Updated)),
@@ -40,16 +46,21 @@ func OutputTable(models []Model, showDetails bool) error {
 		}
 	}
 
-	return w.Flush()
+	return tw.Flush()
 }
 
 // OutputWide formats and displays the models in a wide table format
 func OutputWide(models []Model) error {
-	w := tabwriter.NewWriter(os.Stdout, 0, 0, 3, ' ', 0)
-	fmt.Fprintln(w, output.MakeHeader("NAME\tSIZE\tPULLS\tTAGS\tUPDATED\tDESCRIPTION"))
+	return OutputWideWithWriter(os.Stdout, models)
+}
+
+// OutputWideWithWriter formats and displays the models in a wide table format using the provided writer
+func OutputWideWithWriter(w io.Writer, models []Model) error {
+	tw := tabwriter.NewWriter(w, 0, 0, 3, ' ', 0)
+	fmt.Fprintln(tw, output.MakeHeader("NAME\tSIZE\tPULLS\tTAGS\tUPDATED\tDESCRIPTION"))
 
 	for _, model := range models {
-		fmt.Fprintf(w, "%s\t%s\t%s\t%s\t%s\t%s\n",
+		fmt.Fprintf(tw, "%s\t%s\t%s\t%s\t%s\t%s\n",
 			output.Highlight(model.Name),
 			output.Info(formatSize(model.Size)),
 			getOrDefault(model.Pulls, ""),
@@ -59,17 +70,22 @@ func OutputWide(models []Model) error {
 		)
 	}
 
-	return w.Flush()
+	return tw.Flush()
 }
 
 // OutputJSON outputs the models in JSON format
 func OutputJSON(models []Model) error {
+	return OutputJSONWithWriter(os.Stdout, models)
+}
+
+// OutputJSONWithWriter outputs the models in JSON format using the provided writer
+func OutputJSONWithWriter(w io.Writer, models []Model) error {
 	jsonData, err := json.MarshalIndent(models, "", "  ")
 	if err != nil {
 		return fmt.Errorf("failed to marshal models to JSON: %w", err)
 	}
 
-	fmt.Println(string(jsonData))
+	fmt.Fprintln(w, string(jsonData))
 	return nil
 }
 

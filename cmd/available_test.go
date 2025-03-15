@@ -26,25 +26,37 @@ func TestAvailableCommand(t *testing.T) {
 			name:        "With filter flag",
 			args:        []string{"--filter", "llama"},
 			wantErr:     false,
-			wantContain: "", // Same as above
+			wantContain: "",
 		},
 		{
 			name:        "With output flag",
 			args:        []string{"--output", "json"},
 			wantErr:     false,
-			wantContain: "", // Same as above
+			wantContain: "",
 		},
 		{
 			name:        "With details flag",
 			args:        []string{"--details"},
 			wantErr:     false,
-			wantContain: "", // Same as above
+			wantContain: "",
 		},
 		{
 			name:        "With timeout flag",
 			args:        []string{"--timeout", "10"},
 			wantErr:     false,
-			wantContain: "", // Same as above
+			wantContain: "",
+		},
+		{
+			name:        "With limit flag",
+			args:        []string{"--limit", "2"},
+			wantErr:     false,
+			wantContain: "Displaying 2 of",
+		},
+		{
+			name:        "With limit flag set to -1",
+			args:        []string{"--limit", "-1"},
+			wantErr:     false,
+			wantContain: "",
 		},
 	}
 
@@ -73,7 +85,7 @@ func TestAvailableCommand(t *testing.T) {
 
 			// Check output if specified
 			if tt.wantContain != "" && !bytes.Contains(buf.Bytes(), []byte(tt.wantContain)) {
-				t.Errorf("Output does not contain %q", tt.wantContain)
+				t.Errorf("Output does not contain %q, output: %s", tt.wantContain, buf.String())
 			}
 		})
 	}

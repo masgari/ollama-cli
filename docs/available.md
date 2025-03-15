@@ -18,6 +18,8 @@ This will list all models available on ollama.com.
 | `--details` | `-d` | Show detailed information about models |
 | `--filter` | `-f` | Filter models by name |
 | `--timeout` | `-t` | Timeout in seconds for the HTTP request (default: 30) |
+| `--limit` | `-l` | Limit the number of models displayed (default: 10, use -1 for all) |
+| `--size` | `-s` | Filter models by maximum size in billions (e.g., 7 for 7B models) |
 
 ## Examples
 
@@ -122,6 +124,63 @@ Example output:
 ollama-cli avail --timeout 60
 ```
 
+### Limit the Number of Results
+
+```bash
+# Show only the first 5 models
+ollama-cli avail --limit 5
+```
+
+Example output:
+```
+NAME                SIZE                UPDATED
+llama3              8b                  2 weeks ago
+phi3                14b                 1 month ago
+mistral             7b                  2 months ago
+llama2              7b                  3 months ago
+codellama           7b                  4 months ago
+
+Displaying 5 of 321 models. Use --limit=-1 to show all.
+```
+
+### Show All Available Models
+
+```bash
+# Show all models without limit
+ollama-cli avail --limit -1
+```
+
+### Filter Models by Size
+
+```bash
+# Show only models with 7B or smaller parameter count
+ollama-cli avail --size 7
+```
+
+Example output:
+```
+NAME                SIZE                UPDATED
+llama3              8b                  2 weeks ago
+mistral             7b                  2 months ago
+llama2              7b                  3 months ago
+...
+```
+
+### Combine Filters
+
+```bash
+# Find small llama models
+ollama-cli avail -f llama --size 7
+```
+
+Example output:
+```
+NAME                SIZE                UPDATED
+llama2              7b                  3 months ago
+codellama           7b                  4 months ago
+...
+```
+
 ## Using with Other Commands
 
 The `available` command works well in combination with other Ollama CLI commands:
@@ -156,4 +215,4 @@ ollama-cli pull llama3:8b
 
 3. **Slow response**: The command fetches data from ollama.com, which might be slow depending on your connection. Use the `--timeout` flag to increase the wait time.
 
-For additional help, please refer to the project's GitHub repository or open an issue if you encounter persistent problems. 
+For additional help, please refer to the project's GitHub repository or open an issue if you encounter persistent problems.

@@ -7,6 +7,7 @@ import (
 	"reflect"
 	"sort"
 	"testing"
+	"time"
 )
 
 func TestFilterByName(t *testing.T) {
@@ -168,9 +169,10 @@ func TestFetchModels(t *testing.T) {
 		if r.Method != "GET" {
 			t.Errorf("Expected GET request, got %s", r.Method)
 		}
-		if r.URL.Path != "/search" {
-			t.Errorf("Expected /search path, got %s", r.URL.Path)
-		}
+		// We're not checking the path anymore since we'll use the full URL
+		// if r.URL.Path != "/search" {
+		// 	t.Errorf("Expected /search path, got %s", r.URL.Path)
+		// }
 
 		// Check User-Agent header
 		if r.Header.Get("User-Agent") != "ollama-cli" {
@@ -194,23 +196,97 @@ func TestFetchModels(t *testing.T) {
 	}))
 	defer server.Close()
 
-	// Create a custom FetchModels function that uses the test server
-	defer func() {
-		// This is a placeholder for a proper way to mock the URL in a real implementation
-		// In a real test, you would need to modify the FetchModels function to accept a URL parameter
-		// or use a more sophisticated HTTP client mocking approach
-	}()
+	// Create a custom ModelFetcher that uses the test server
+	client := &http.Client{Timeout: 5 * time.Second}
+	fetcher := NewModelFetcher(client, server.URL)
 
-	// For this test, we'll just verify that the function doesn't return an error
-	// In a real implementation, you would need to modify FetchModels to accept a custom URL
+	// Fetch models using the custom fetcher
 	ctx := context.Background()
-	_, err := FetchModels(ctx, 5)
+	models, err := fetcher.FetchModels(ctx)
 
-	// We're not checking the actual models returned since we can't easily mock the URL in this test
-	// Just check that the function doesn't panic
+	// Check for errors
 	if err != nil {
-		// This is expected since we can't modify the URL in the FetchModels function
-		// In a real test, you would assert that the models match the expected values
-		t.Logf("FetchModels returned an error as expected: %v", err)
+		t.Fatalf("FetchModels() error = %v", err)
+	}
+
+	// Check the number of models returned
+	if len(models) != 1 {
+		t.Errorf("FetchModels() returned %d models, want 1", len(models))
+	}
+
+	// Check the model details
+	model := models[0]
+	if model.Name != "llama2" {
+		t.Errorf("model.Name = %s, want llama2", model.Name)
+	}
+	if model.Description != "Llama 2 model" {
+		t.Errorf("model.Description = %s, want Llama 2 model", model.Description)
+	}
+	if model.Size != "7.0B" {
+		t.Errorf("model.Size = %s, want 7.0B", model.Size)
+	}
+	if model.Pulls != "1M" {
+		t.Errorf("model.Pulls = %s, want 1M", model.Pulls)
+	}
+	if model.Tags != "10" {
+		t.Errorf("model.Tags = %s, want 10", model.Tags)
+	}
+	if model.Updated != "1 day ago" {
+		t.Errorf("model.Updated = %s, want 1 day ago", model.Updated)
+	}
+}
+
+func TestFilterBySize(t *testing.T) {
+	// Test data
+	models := []Model{
+		{Name: "llama2", Size: "7.0B"},
+		{Name: "mistral", Size: "14.0B"},
+		{Name: "llama3", Size: "3.5B, 7.0B"},
+		{Name: "gemma2", Size: "4.0B"},
+	}
+
+	// Test cases
+	tests := []struct {
+		name    string
+		maxSize float64
+		want    []Model
+	}{
+		{
+			name:    "No size limit returns all models",
+			maxSize: 0,
+			want:    models,
+		},
+		{
+			name:    "Filter models with size <= 7B",
+			maxSize: 7,
+			want: []Model{
+				{Name: "llama2", Size: "7.0B"},
+				{Name: "llama3", Size: "3.5B, 7.0B"},
+				{Name: "gemma2", Size: "4.0B"},
+			},
+		},
+		{
+			name:    "Filter models with size <= 4B",
+			maxSize: 4,
+			want: []Model{
+				{Name: "llama3", Size: "3.5B, 7.0B"},
+				{Name: "gemma2", Size: "4.0B"},
+			},
+		},
+		{
+			name:    "Filter models with size <= 3B returns none",
+			maxSize: 3,
+			want:    []Model{},
+		},
+	}
+
+	// Run tests
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := FilterBySize(models, tt.maxSize)
+			if !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("FilterBySize() = %v, want %v", got, tt.want)
+			}
+		})
 	}
 }

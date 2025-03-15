@@ -63,6 +63,14 @@ func TestConfigCommand(t *testing.T) {
 		cfg = origCfg
 	}()
 
+	// Save the original configName and restore it after the test
+	origConfigName := configName
+	// Use a test-specific config name
+	configName = "test-config"
+	defer func() {
+		configName = origConfigName
+	}()
+
 	// Test cases
 	tests := []struct {
 		name        string
@@ -160,6 +168,14 @@ func TestConfigSetCommand(t *testing.T) {
 	cfg = config.DefaultConfig()
 	defer func() {
 		cfg = origCfg
+	}()
+
+	// Save the original configName and restore it after the test
+	origConfigName := configName
+	// Use a test-specific config name
+	configName = "test-config"
+	defer func() {
+		configName = origConfigName
 	}()
 
 	// Test cases
@@ -266,8 +282,16 @@ func TestConfigGetCommand(t *testing.T) {
 		cfg = origCfg
 	}()
 
+	// Save the original configName and restore it after the test
+	origConfigName := configName
+	// Use a test-specific config name
+	configName = "test-config"
+	defer func() {
+		configName = origConfigName
+	}()
+
 	// Save the test config
-	if err := config.SaveConfig(cfg); err != nil {
+	if err := config.SaveConfig(cfg, configName); err != nil {
 		t.Fatalf("Failed to save test config: %v", err)
 	}
 
@@ -369,6 +393,14 @@ func TestConfigListCommand(t *testing.T) {
 		cfg = origCfg
 	}()
 
+	// Save the original configName and restore it after the test
+	origConfigName := configName
+	// Use a test-specific config name
+	configName = "test-config"
+	defer func() {
+		configName = origConfigName
+	}()
+
 	// Create some test config files
 	testConfigs := []struct {
 		name string
@@ -468,16 +500,40 @@ func TestConfigCommandFlags(t *testing.T) {
 
 // TestConfigEnableChatCommand tests the config enable-chat command
 func TestConfigEnableChatCommand(t *testing.T) {
-	// Initialize cfg if it's nil
-	if cfg == nil {
-		cfg = &config.Config{
-			Host:        "localhost",
-			Port:        11434,
-			ChatEnabled: false,
-		}
-	} else {
-		cfg.ChatEnabled = false
+	// Create a temporary config directory for testing
+	tempDir, err := os.MkdirTemp("", "ollama-cli-test")
+	if err != nil {
+		t.Fatalf("Failed to create temp dir: %v", err)
 	}
+	defer os.RemoveAll(tempDir)
+
+	// Override the config directory for testing
+	origGetConfigDir := config.GetConfigDir
+	config.GetConfigDir = func() string {
+		return tempDir
+	}
+	defer func() {
+		config.GetConfigDir = origGetConfigDir
+	}()
+
+	// Initialize cfg if it's nil
+	origCfg := cfg
+	cfg = &config.Config{
+		Host:        "localhost",
+		Port:        11434,
+		ChatEnabled: false,
+	}
+	defer func() {
+		cfg = origCfg
+	}()
+
+	// Save the original configName and restore it after the test
+	origConfigName := configName
+	// Use a test-specific config name
+	configName = "test-config"
+	defer func() {
+		configName = origConfigName
+	}()
 
 	// Create a new command
 	cmd := &cobra.Command{Use: "test"}
@@ -487,7 +543,7 @@ func TestConfigEnableChatCommand(t *testing.T) {
 	cmd.SetArgs([]string{"config", "enable-chat"})
 
 	// Execute the command
-	err := cmd.Execute()
+	err = cmd.Execute()
 	assert.NoError(t, err)
 
 	// Check that chat is enabled
@@ -496,16 +552,40 @@ func TestConfigEnableChatCommand(t *testing.T) {
 
 // TestConfigDisableChatCommand tests the config disable-chat command
 func TestConfigDisableChatCommand(t *testing.T) {
-	// Initialize cfg if it's nil
-	if cfg == nil {
-		cfg = &config.Config{
-			Host:        "localhost",
-			Port:        11434,
-			ChatEnabled: true,
-		}
-	} else {
-		cfg.ChatEnabled = true
+	// Create a temporary config directory for testing
+	tempDir, err := os.MkdirTemp("", "ollama-cli-test")
+	if err != nil {
+		t.Fatalf("Failed to create temp dir: %v", err)
 	}
+	defer os.RemoveAll(tempDir)
+
+	// Override the config directory for testing
+	origGetConfigDir := config.GetConfigDir
+	config.GetConfigDir = func() string {
+		return tempDir
+	}
+	defer func() {
+		config.GetConfigDir = origGetConfigDir
+	}()
+
+	// Initialize cfg if it's nil
+	origCfg := cfg
+	cfg = &config.Config{
+		Host:        "localhost",
+		Port:        11434,
+		ChatEnabled: true,
+	}
+	defer func() {
+		cfg = origCfg
+	}()
+
+	// Save the original configName and restore it after the test
+	origConfigName := configName
+	// Use a test-specific config name
+	configName = "test-config"
+	defer func() {
+		configName = origConfigName
+	}()
 
 	// Create a new command
 	cmd := &cobra.Command{Use: "test"}
@@ -515,7 +595,7 @@ func TestConfigDisableChatCommand(t *testing.T) {
 	cmd.SetArgs([]string{"config", "disable-chat"})
 
 	// Execute the command
-	err := cmd.Execute()
+	err = cmd.Execute()
 	assert.NoError(t, err)
 
 	// Check that chat is disabled
@@ -524,15 +604,44 @@ func TestConfigDisableChatCommand(t *testing.T) {
 
 // TestConfigGetChatEnabled tests the config get chat_enabled command
 func TestConfigGetChatEnabled(t *testing.T) {
+	// Create a temporary config directory for testing
+	tempDir, err := os.MkdirTemp("", "ollama-cli-test")
+	if err != nil {
+		t.Fatalf("Failed to create temp dir: %v", err)
+	}
+	defer os.RemoveAll(tempDir)
+
+	// Override the config directory for testing
+	origGetConfigDir := config.GetConfigDir
+	config.GetConfigDir = func() string {
+		return tempDir
+	}
+	defer func() {
+		config.GetConfigDir = origGetConfigDir
+	}()
+
 	// Initialize cfg if it's nil
-	if cfg == nil {
-		cfg = &config.Config{
-			Host:        "localhost",
-			Port:        11434,
-			ChatEnabled: true,
-		}
-	} else {
-		cfg.ChatEnabled = true
+	origCfg := cfg
+	cfg = &config.Config{
+		Host:        "localhost",
+		Port:        11434,
+		ChatEnabled: true,
+	}
+	defer func() {
+		cfg = origCfg
+	}()
+
+	// Save the original configName and restore it after the test
+	origConfigName := configName
+	// Use a test-specific config name
+	configName = "test-config"
+	defer func() {
+		configName = origConfigName
+	}()
+
+	// Save the test config
+	if err := config.SaveConfig(cfg, configName); err != nil {
+		t.Fatalf("Failed to save test config: %v", err)
 	}
 
 	// Create a new command
@@ -554,7 +663,7 @@ func TestConfigGetChatEnabled(t *testing.T) {
 	cmd.SetArgs([]string{"config", "get", "chat_enabled"})
 
 	// Execute the command
-	err := cmd.Execute()
+	err = cmd.Execute()
 	assert.NoError(t, err)
 
 	// Close the write end of the pipe to flush the buffer
