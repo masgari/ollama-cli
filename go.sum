@@ -28,6 +28,8 @@ github.com/mitchellh/mapstructure v1.5.0 h1:jeMsZIYE/09sWLaz43PL7Gy6RuMjD2eJVyua
 github.com/mitchellh/mapstructure v1.5.0/go.mod h1:bFUtVrKA4DC2yAKiSyO/QUcy7e+RRV2QTWOzhPopBRo=
 github.com/ollama/ollama v0.5.13 h1:URBx4e6nyAaVhEGXH6AWVqORhebcSQcJ7hLTS0xkAPg=
 github.com/ollama/ollama v0.5.13/go.mod h1:tCNqO/GjOA24FD16QtC8RhI1BNV4SYowhugtIHgFij4=
+github.com/ollama/ollama v0.6.0 h1:ZX8Jw3dbNivWwmxEOyy881CnWdqdCxdG94thX+ze8Bo=
+github.com/ollama/ollama v0.6.0/go.mod h1:pGgtoNyc9DdM6oZI6yMfI6jTk2Eh4c36c2GpfQCH7PY=
 github.com/pelletier/go-toml/v2 v2.2.3 h1:YmeHyLY8mFWbdkNWwpr+qIL2bEqT0o95WSdkNHvL12M=
 github.com/pelletier/go-toml/v2 v2.2.3/go.mod h1:MfCQTFTvCcUyyvvwm1+G6H/jORL20Xlb6rzQu9GuUkc=
 github.com/pmezard/go-difflib v1.0.1-0.20181226105442-5d4384ee4fb2 h1:Jamvg5psRIccs7FGNTlIRMkT8wgtp5eCXdBlqhYGL6U=

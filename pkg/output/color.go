@@ -120,6 +120,14 @@ func (w *ColorWriter) HeaderPrintln(a ...interface{}) (n int, err error) {
 // Default is a ColorWriter that writes to os.Stdout
 var Default = NewColorWriter(os.Stdout)
 
+// StdErr is a ColorWriter that writes to os.Stderr
+var StdErr = NewColorWriter(os.Stderr)
+
+// GetStdErr returns a ColorWriter that writes to the current os.Stderr
+func GetStdErr() *ColorWriter {
+	return NewColorWriter(os.Stderr)
+}
+
 // DisableColors disables all colors
 func DisableColors() {
 	color.NoColor = true

@@ -20,41 +20,35 @@ var (
 var configCmd = &cobra.Command{
 	Use:   "config",
 	Short: "Configure the Ollama CLI",
-	Long:  `Configure the Ollama CLI to connect to a remote Ollama server.`,
+	Long: `Configure the Ollama CLI.
+	
+You can view or update the configuration for the Ollama CLI.`,
 	Run: func(cmd *cobra.Command, args []string) {
-		// If no flags are provided, show the current configuration
-		if configHost == "" && configPort == 0 {
-			output.Default.HeaderPrintln("Current configuration:")
-			if configName != "" {
-				fmt.Printf("  Config: %s\n", output.Highlight(configName))
+		// If flags are provided, update the configuration
+		if cmd.Flags().Changed("host") || cmd.Flags().Changed("port") {
+			// Update the configuration
+			if cmd.Flags().Changed("host") {
+				cfg.Host = configHost
 			}
-			fmt.Printf("  Host: %s\n", output.Highlight(cfg.Host))
-			fmt.Printf("  Port: %s\n", output.Highlight(strconv.Itoa(cfg.Port)))
-			fmt.Printf("  URL:  %s\n", output.Highlight(cfg.GetServerURL()))
-			return
+			if cmd.Flags().Changed("port") {
+				cfg.Port = configPort
+			}
+
+			// Save the configuration
+			if err := config.SaveConfig(cfg, configName); err != nil {
+				output.Default.ErrorPrintf("Error saving configuration: %v\n", err)
+				return
+			}
+
+			output.Default.SuccessPrintln("Configuration updated successfully:")
 		}
 
-		// Update the configuration
-		if configHost != "" {
-			cfg.Host = configHost
-		}
-		if configPort != 0 {
-			cfg.Port = configPort
-		}
-
-		// Save the configuration
-		if err := config.SaveConfig(cfg, configName); err != nil {
-			output.Default.ErrorPrintf("Error saving configuration: %v\n", err)
-			return
-		}
-
-		output.Default.SuccessPrintln("Configuration updated successfully:")
-		if configName != "" {
-			fmt.Printf("  Config: %s\n", output.Highlight(configName))
-		}
-		fmt.Printf("  Host: %s\n", output.Highlight(cfg.Host))
-		fmt.Printf("  Port: %s\n", output.Highlight(strconv.Itoa(cfg.Port)))
-		fmt.Printf("  URL:  %s\n", output.Highlight(cfg.GetServerURL()))
+		// Display the current configuration
+		output.Default.HeaderPrintln("Current configuration:")
+		fmt.Printf("  %s: %s\n", output.MakeHeader("Host"), output.Highlight(cfg.Host))
+		fmt.Printf("  %s: %s\n", output.MakeHeader("Port"), output.Highlight(strconv.Itoa(cfg.Port)))
+		fmt.Printf("  %s: %s\n", output.MakeHeader("URL"), output.Highlight(cfg.GetServerURL()))
+		fmt.Printf("  %s: %s\n", output.MakeHeader("Chat Enabled"), output.Highlight(strconv.FormatBool(cfg.ChatEnabled)))
 	},
 }
 
@@ -110,6 +104,8 @@ var configGetCmd = &cobra.Command{
 			fmt.Println(output.Highlight(strconv.Itoa(cfg.Port)))
 		case "url":
 			fmt.Println(output.Highlight(cfg.GetServerURL()))
+		case "chat_enabled":
+			fmt.Println(output.Highlight(strconv.FormatBool(cfg.ChatEnabled)))
 		default:
 			output.Default.ErrorPrintf("Error: unknown configuration key: %s\n", key)
 		}
@@ -155,11 +151,43 @@ var configListCmd = &cobra.Command{
 	},
 }
 
+// configEnableChatCmd represents the config enable-chat command
+var configEnableChatCmd = &cobra.Command{
+	Use:   "enable-chat",
+	Short: "Enable the chat command",
+	Long:  `Enable the chat command in the configuration.`,
+	Run: func(cmd *cobra.Command, args []string) {
+		cfg.ChatEnabled = true
+		if err := config.SaveConfig(cfg, configName); err != nil {
+			output.Default.ErrorPrintf("Error saving configuration: %v\n", err)
+			return
+		}
+		output.Default.SuccessPrintf("Chat command has been enabled in your configuration.\n")
+	},
+}
+
+// configDisableChatCmd represents the config disable-chat command
+var configDisableChatCmd = &cobra.Command{
+	Use:   "disable-chat",
+	Short: "Disable the chat command",
+	Long:  `Disable the chat command in the configuration.`,
+	Run: func(cmd *cobra.Command, args []string) {
+		cfg.ChatEnabled = false
+		if err := config.SaveConfig(cfg, configName); err != nil {
+			output.Default.ErrorPrintf("Error saving configuration: %v\n", err)
+			return
+		}
+		output.Default.SuccessPrintf("Chat command has been disabled in your configuration.\n")
+	},
+}
+
 func init() {
 	rootCmd.AddCommand(configCmd)
 	configCmd.AddCommand(configSetCmd)
 	configCmd.AddCommand(configGetCmd)
 	configCmd.AddCommand(configListCmd)
+	configCmd.AddCommand(configEnableChatCmd)
+	configCmd.AddCommand(configDisableChatCmd)
 
 	// Add flags for the config command
 	configCmd.Flags().StringVar(&configHost, "host", "", "Ollama server host")

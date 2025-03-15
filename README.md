@@ -4,7 +4,7 @@ A lightweight command-line interface for managing remote Ollama servers without 
 
 ## Why Ollama CLI?
 
-While Ollama provides its own CLI, it requires a local Ollama installation. Ollama CLI lets you manage remote Ollama servers from any machine without installing Ollama itself. Perfect for:
+While Ollama provides its own CLI, it requires a local Ollama installation. Ollama CLI lets you manage remote Ollama servers from any machine without installing Ollama itself. Suitable for:
 
 - Managing Ollama on headless servers
 - Working with multiple Ollama instances across your network
@@ -49,6 +49,7 @@ Available Commands:
   list        List models available on the Ollama server
   pull        Pull a model from the Ollama server
   rm          Remove a model from the Ollama server
+  chat        Chat with an Ollama model
   version     Display the version of the CLI tool
 
 Flags:
@@ -126,6 +127,50 @@ smallthinker:3b: [57.1%] [1967.8/3448.6 MB] pulling ad361f123f77
 ollama-cli rm smallthinker:3b
 ```
 
+### Chat with Models
+
+Interact with your LLM models:
+
+```bash
+# Simple chat with a model
+ollama-cli chat llama3.2
+
+# Chat with a specific input
+ollama-cli chat llama3.2 --prompt "What is the capital of France?"
+ollama-cli chat llama3.2 -p "What is the capital of France?"
+
+# Chat with a model using an image
+ollama-cli chat llama3.2 --prompt "What's in this image?" --image /path/to/image.jpg
+ollama-cli chat llama3.2 -p "What's in this image?" -i /path/to/image.jpg
+
+# Interactive chat mode
+ollama-cli chat llama3.2 --interactive
+ollama-cli chat llama3.2 -I
+
+# Set custom parameters
+ollama-cli chat llama3.2 --temperature 0.7 --system "You are a helpful assistant"
+ollama-cli chat llama3.2 -t 0.7 -s "You are a helpful assistant"
+
+# Save chat history to a file
+ollama-cli chat llama3.2 --output-file chat_history.json
+
+# Load previous chat history
+ollama-cli chat llama3.2 --input-file chat_history.json
+
+# Display statistics about token usage and generation time
+ollama-cli chat llama3.2 --prompt "Hello" --stats --no-stream
+```
+
+In interactive mode, you can use special commands:
+- Type `exit` to quit the chat session
+- Type `save` to save the conversation
+- Type `clear` to clear the chat history
+- Type `temp 0.8` to change the temperature parameter
+- Type `image /path/to/image.jpg` to send an image
+
+> **Note**: The chat command is disabled by default for security reasons. When you first run it, you will be prompted to enable it.
+> For detailed usage instructions and security considerations, see [Chat Documentation](docs/chat.md) and [Security Guidelines](docs/security.md).
+
 ### Flexible Output Formats
 
 All commands support multiple output formats:
@@ -169,6 +214,14 @@ make build
 # Or build for a specific platform
 GOOS=linux GOARCH=amd64 make build
 ```
+
+## Disclaimer
+
+Ollama CLI is an open source project provided "as is" without warranty of any kind, express or implied. The authors and contributors of this project disclaim all liability for any damages or losses, including but not limited to direct, indirect, incidental, special, consequential, or similar damages arising from the use of this tool.
+
+Users are responsible for ensuring their use of Ollama CLI complies with all applicable laws, regulations, and third-party terms of service. The authors are not responsible for any misuse of the tool or for any violations of Ollama's terms of service that may result from using this CLI.
+
+By using Ollama CLI, you acknowledge and agree that you assume all risks associated with its use.
 
 ## License
 

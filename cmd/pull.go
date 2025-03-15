@@ -27,7 +27,7 @@ var pullCmd = &cobra.Command{
 			return fmt.Errorf("failed to pull model: %w", err)
 		}
 
-		output.Default.SuccessPrintf("Model '%s' pulled successfully.\n", output.Highlight(modelName))
+		output.Default.SuccessPrintf("\nModel '%s' pulled successfully.\n", output.Highlight(modelName))
 		return nil
 	},
 }

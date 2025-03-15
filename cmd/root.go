@@ -73,7 +73,7 @@ func init() {
 	rootCmd.PersistentFlags().StringVar(&cfgFile, "config", "", "config file (default is $HOME/.ollama-cli/config.yaml)")
 	rootCmd.PersistentFlags().StringVarP(&configName, "config-name", "c", "", "config name to use (e.g. 'pc' for $HOME/.ollama-cli/pc.yaml)")
 	rootCmd.PersistentFlags().StringP("host", "H", "", "Ollama server host (default is localhost)")
-	rootCmd.PersistentFlags().IntP("port", "p", 0, "Ollama server port (default is 11434)")
+	rootCmd.PersistentFlags().Int("port", 0, "Ollama server port (default is 11434)")
 	rootCmd.PersistentFlags().BoolVar(&noColor, "no-color", false, "Disable color output")
 	rootCmd.PersistentFlags().BoolVarP(&verbose, "verbose", "v", false, "verbose output")
 }
