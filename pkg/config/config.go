@@ -13,15 +13,17 @@ var CurrentConfigName string
 
 // Config holds the configuration for the Ollama CLI
 type Config struct {
-	Host string `mapstructure:"host"`
-	Port int    `mapstructure:"port"`
+	Host        string `mapstructure:"host"`
+	Port        int    `mapstructure:"port"`
+	ChatEnabled bool   `mapstructure:"chat_enabled"`
 }
 
 // DefaultConfig returns the default configuration
 func DefaultConfig() *Config {
 	return &Config{
-		Host: "localhost",
-		Port: 11434,
+		Host:        "localhost",
+		Port:        11434,
+		ChatEnabled: false, // Chat is disabled by default
 	}
 }
 
@@ -56,6 +58,7 @@ func LoadConfig(configName ...string) (*Config, error) {
 		viper.SetConfigFile(configFile)
 		viper.Set("host", defaultConfig.Host)
 		viper.Set("port", defaultConfig.Port)
+		viper.Set("chat_enabled", defaultConfig.ChatEnabled)
 		if err := viper.WriteConfig(); err != nil {
 			return nil, fmt.Errorf("failed to write default config: %w", err)
 		}
@@ -92,6 +95,7 @@ func SaveConfig(config *Config, configName ...string) error {
 	viper.SetConfigFile(configFile)
 	viper.Set("host", config.Host)
 	viper.Set("port", config.Port)
+	viper.Set("chat_enabled", config.ChatEnabled)
 
 	return viper.WriteConfig()
 }
@@ -105,4 +109,26 @@ var GetConfigDir = func() string {
 		return ".ollama-cli"
 	}
 	return filepath.Join(homeDir, ".ollama-cli")
+}
+
+// EnableChat enables the chat feature in the configuration and saves it
+func EnableChat(configName ...string) error {
+	config, err := LoadConfig(configName...)
+	if err != nil {
+		return fmt.Errorf("failed to load config: %w", err)
+	}
+
+	config.ChatEnabled = true
+
+	return SaveConfig(config, configName...)
+}
+
+// IsChatEnabled checks if chat is enabled in the configuration
+func IsChatEnabled(configName ...string) (bool, error) {
+	config, err := LoadConfig(configName...)
+	if err != nil {
+		return false, fmt.Errorf("failed to load config: %w", err)
+	}
+
+	return config.ChatEnabled, nil
 }

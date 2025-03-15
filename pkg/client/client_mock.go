@@ -42,6 +42,15 @@ func (m *MockClientTestify) PullModel(ctx context.Context, modelName string) err
 	return args.Error(0)
 }
 
+// ChatWithModel implements the Client interface
+func (m *MockClientTestify) ChatWithModel(ctx context.Context, modelName string, messages []api.Message, stream bool, options map[string]interface{}) (*api.ChatResponse, error) {
+	args := m.Called(ctx, modelName, messages, stream, options)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*api.ChatResponse), args.Error(1)
+}
+
 // NewMockClient creates a new testify mock client
 func NewMockClient() *MockClientTestify {
 	return &MockClientTestify{}

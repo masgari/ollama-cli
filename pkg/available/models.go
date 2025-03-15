@@ -215,6 +215,10 @@ func parseUpdateTime(updated string) time.Time {
 			}
 		}
 	}
+	// yesterday case
+	if strings.Contains(lower, "yesterday") {
+		return time.Now().AddDate(0, 0, -1)
+	}
 
 	return time.Time{} // Return zero time if we can't parse the format
 }

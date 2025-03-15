@@ -71,7 +71,15 @@ func TestParseModels(t *testing.T) {
 			<span x-test-size>7.0B</span>
 			<span x-test-pull-count>1M</span>
 			<span x-test-tag-count>10</span>
-			<span x-test-updated>1 day ago</span>
+			<span x-test-updated>1 hour ago</span>
+		</li>
+		<li x-test-model>
+			<span x-test-search-response-title>gemma2</span>
+			<p class="max-w-lg break-words">Gemma 2 model</p>
+			<span x-test-size>4.0B</span>
+			<span x-test-pull-count>500K</span>
+			<span x-test-tag-count>5</span>
+			<span x-test-updated>yesterday</span>
 		</li>
 		<li x-test-model>
 			<span x-test-search-response-title>mistral</span>
@@ -92,7 +100,15 @@ func TestParseModels(t *testing.T) {
 			Size:        "7.0B",
 			Pulls:       "1M",
 			Tags:        "10",
-			Updated:     "1 day ago",
+			Updated:     "1 hour ago",
+		},
+		{
+			Name:        "gemma2",
+			Description: "Gemma 2 model",
+			Size:        "4.0B",
+			Pulls:       "500K",
+			Tags:        "5",
+			Updated:     "yesterday",
 		},
 		{
 			Name:        "mistral",

@@ -12,6 +12,7 @@ import (
 
 	"github.com/masgari/ollama-cli/pkg/config"
 	"github.com/masgari/ollama-cli/pkg/output"
+	"github.com/masgari/ollama-cli/pkg/security"
 	"github.com/ollama/ollama/api"
 )
 
@@ -21,6 +22,7 @@ type Client interface {
 	GetModelDetails(ctx context.Context, modelName string) (*api.ShowResponse, error)
 	DeleteModel(ctx context.Context, modelName string) error
 	PullModel(ctx context.Context, modelName string) error
+	ChatWithModel(ctx context.Context, modelName string, messages []api.Message, stream bool, options map[string]interface{}) (*api.ChatResponse, error)
 }
 
 // OllamaClient represents an Ollama API client implementation
@@ -196,6 +198,84 @@ func (c *OllamaClient) PullModel(ctx context.Context, modelName string) error {
 	return nil
 }
 
+// ChatWithModel sends a chat request to the Ollama server
+func (c *OllamaClient) ChatWithModel(ctx context.Context, modelName string, messages []api.Message, stream bool, options map[string]interface{}) (*api.ChatResponse, error) {
+	// Use a reasonable timeout for chat operations (2 minutes)
+	ctx, cancel := context.WithTimeout(ctx, 30*time.Minute)
+	defer cancel()
+
+	client := c.createClient(30*time.Minute, false)
+	req := &api.ChatRequest{
+		Model:    modelName,
+		Messages: messages,
+		Stream:   &stream,
+		Options:  options,
+	}
+
+	var finalResponse *api.ChatResponse
+	var accumulatedContent string
+
+	err := client.Chat(ctx, req, func(response api.ChatResponse) error {
+		if stream {
+			// Accumulate the content
+			accumulatedContent += response.Message.Content
+
+			// Print the response content as it comes in
+			fmt.Print(response.Message.Content)
+		}
+
+		if response.Done {
+			finalResponse = &response
+
+			// If streaming was enabled, update the final response with the accumulated content
+			if stream && finalResponse != nil {
+				finalResponse.Message.Content = accumulatedContent
+			}
+		}
+
+		return nil
+	})
+
+	if err != nil {
+		if isTimeoutError(err) {
+			return nil, fmt.Errorf("timeout while chatting with model: %w", err)
+		}
+		return nil, fmt.Errorf("failed to chat with model: %w", err)
+	}
+
+	if stream {
+		fmt.Println() // Add a newline at the end of streaming output
+
+		// If we didn't get a final response with Done=true, create one with the accumulated content
+		if finalResponse == nil {
+			finalResponse = &api.ChatResponse{
+				Message: api.Message{
+					Role:    "assistant",
+					Content: accumulatedContent,
+				},
+				Done: true,
+			}
+		}
+	}
+
+	// Validate the response for security issues
+	if finalResponse != nil {
+		validationResult := security.ValidateChatResponse(finalResponse)
+
+		// Display warnings if any
+		for _, warning := range validationResult.Warnings {
+			output.Default.WarningPrintf("%s\n", warning)
+		}
+
+		// If suspicious, display a warning
+		if validationResult.IsSuspicious {
+			output.Default.WarningPrintf("%s\n", security.GetOutputWarningMessage())
+		}
+	}
+
+	return finalResponse, nil
+}
+
 // isTimeoutError checks if the error is a timeout error
 func isTimeoutError(err error) bool {
 	if err == nil {
@@ -229,4 +309,8 @@ func (c *errorClient) DeleteModel(ctx context.Context, modelName string) error {
 
 func (c *errorClient) PullModel(ctx context.Context, modelName string) error {
 	return c.err
+}
+
+func (c *errorClient) ChatWithModel(ctx context.Context, modelName string, messages []api.Message, stream bool, options map[string]interface{}) (*api.ChatResponse, error) {
+	return nil, c.err
 }

@@ -9,6 +9,7 @@ import (
 
 	"github.com/masgari/ollama-cli/pkg/config"
 	"github.com/spf13/cobra"
+	"github.com/stretchr/testify/assert"
 )
 
 func captureOutput(f func()) string {
@@ -463,4 +464,125 @@ func TestConfigCommandFlags(t *testing.T) {
 			t.Errorf("port flag default value = %q, want %q", portFlag.DefValue, "0")
 		}
 	}
+}
+
+// TestConfigEnableChatCommand tests the config enable-chat command
+func TestConfigEnableChatCommand(t *testing.T) {
+	// Initialize cfg if it's nil
+	if cfg == nil {
+		cfg = &config.Config{
+			Host:        "localhost",
+			Port:        11434,
+			ChatEnabled: false,
+		}
+	} else {
+		cfg.ChatEnabled = false
+	}
+
+	// Create a new command
+	cmd := &cobra.Command{Use: "test"}
+	cmd.AddCommand(configCmd)
+
+	// Set up command line arguments
+	cmd.SetArgs([]string{"config", "enable-chat"})
+
+	// Execute the command
+	err := cmd.Execute()
+	assert.NoError(t, err)
+
+	// Check that chat is enabled
+	assert.True(t, cfg.ChatEnabled)
+}
+
+// TestConfigDisableChatCommand tests the config disable-chat command
+func TestConfigDisableChatCommand(t *testing.T) {
+	// Initialize cfg if it's nil
+	if cfg == nil {
+		cfg = &config.Config{
+			Host:        "localhost",
+			Port:        11434,
+			ChatEnabled: true,
+		}
+	} else {
+		cfg.ChatEnabled = true
+	}
+
+	// Create a new command
+	cmd := &cobra.Command{Use: "test"}
+	cmd.AddCommand(configCmd)
+
+	// Set up command line arguments
+	cmd.SetArgs([]string{"config", "disable-chat"})
+
+	// Execute the command
+	err := cmd.Execute()
+	assert.NoError(t, err)
+
+	// Check that chat is disabled
+	assert.False(t, cfg.ChatEnabled)
+}
+
+// TestConfigGetChatEnabled tests the config get chat_enabled command
+func TestConfigGetChatEnabled(t *testing.T) {
+	// Initialize cfg if it's nil
+	if cfg == nil {
+		cfg = &config.Config{
+			Host:        "localhost",
+			Port:        11434,
+			ChatEnabled: true,
+		}
+	} else {
+		cfg.ChatEnabled = true
+	}
+
+	// Create a new command
+	cmd := &cobra.Command{Use: "test"}
+	cmd.AddCommand(configCmd)
+
+	// Save the original stdout and restore it after the test
+	oldStdout := os.Stdout
+	defer func() {
+		os.Stdout = oldStdout
+	}()
+
+	// Create a buffer to capture output
+	var buf bytes.Buffer
+	r, w, _ := os.Pipe()
+	os.Stdout = w
+
+	// Set up command line arguments
+	cmd.SetArgs([]string{"config", "get", "chat_enabled"})
+
+	// Execute the command
+	err := cmd.Execute()
+	assert.NoError(t, err)
+
+	// Close the write end of the pipe to flush the buffer
+	w.Close()
+	io.Copy(&buf, r)
+	os.Stdout = oldStdout
+	output := buf.String()
+
+	// Check the output
+	assert.Contains(t, output, "true")
+
+	// Test with chat disabled
+	cfg.ChatEnabled = false
+
+	buf.Reset()
+	r, w, _ = os.Pipe()
+	os.Stdout = w
+
+	// Execute the command again
+	err = cmd.Execute()
+	assert.NoError(t, err)
+
+	// Close the write end of the pipe to flush the buffer
+	w.Close()
+	io.Copy(&buf, r)
+	os.Stdout = oldStdout
+	output = buf.String()
+
+	// Check the output
+	assert.Contains(t, output, "false")
 }
