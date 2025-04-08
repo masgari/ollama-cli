@@ -1,0 +1,47 @@
+name: "OSSAR Scan"
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+  schedule:
+    - cron: '0 0 * * 0'
+
+jobs:
+  security-scan:
+    name: Security Scan
+    runs-on: ubuntu-latest
+    permissions:
+      security-events: write
+      actions: read
+      contents: read
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Run OSSAR Scan
+        uses: github/ossar-action@v1
+        continue-on-error: true
+        with:
+          languages: go
+          config: .guardian/guardian.yml
+
+      - name: Dependency Review
+        uses: actions/dependency-review-action@v3
+        continue-on-error: true
+        with:
+          fail-on-severity: high
+
+      - name: Upload Scan Results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: security-scan-results
+          path: |
+            *.json
+            *.sarif
+            *.xml
+            *.txt
+          retention-days: 90 
