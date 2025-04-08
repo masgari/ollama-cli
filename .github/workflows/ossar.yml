@@ -9,8 +9,8 @@ on:
     - cron: '0 0 * * 0'
 
 jobs:
-  ossar-scan:
-    name: OSSAR Scan
+  security-scan:
+    name: Security Scan
     runs-on: ubuntu-latest
     permissions:
       security-events: write
@@ -23,5 +23,25 @@ jobs:
 
       - name: Run OSSAR Scan
         uses: github/ossar-action@v1
+        continue-on-error: true
         with:
-          languages: go 
+          languages: go
+          config: .guardian/guardian.yml
+
+      - name: Dependency Review
+        uses: actions/dependency-review-action@v3
+        continue-on-error: true
+        with:
+          fail-on-severity: high
+
+      - name: Upload Scan Results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: security-scan-results
+          path: |
+            *.json
+            *.sarif
+            *.xml
+            *.txt
+          retention-days: 90 
