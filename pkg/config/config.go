@@ -13,17 +13,19 @@ var CurrentConfigName string
 
 // Config holds the configuration for the Ollama CLI
 type Config struct {
-	Host        string `mapstructure:"host"`
-	Port        int    `mapstructure:"port"`
-	ChatEnabled bool   `mapstructure:"chat_enabled"`
+	Host         string `mapstructure:"host"`
+	Port         int    `mapstructure:"port"`
+	ChatEnabled  bool   `mapstructure:"chat_enabled"`
+	CheckUpdates bool   `mapstructure:"check_updates"`
 }
 
 // DefaultConfig returns the default configuration
 func DefaultConfig() *Config {
 	return &Config{
-		Host:        "localhost",
-		Port:        11434,
-		ChatEnabled: false, // Chat is disabled by default
+		Host:         "localhost",
+		Port:         11434,
+		ChatEnabled:  false, // Chat is disabled by default
+		CheckUpdates: true,  // Check for updates by default
 	}
 }
 
@@ -59,6 +61,7 @@ func LoadConfig(configName ...string) (*Config, error) {
 		viper.Set("host", defaultConfig.Host)
 		viper.Set("port", defaultConfig.Port)
 		viper.Set("chat_enabled", defaultConfig.ChatEnabled)
+		viper.Set("check_updates", defaultConfig.CheckUpdates)
 		if err := viper.WriteConfig(); err != nil {
 			return nil, fmt.Errorf("failed to write default config: %w", err)
 		}
@@ -96,6 +99,7 @@ func SaveConfig(config *Config, configName ...string) error {
 	viper.Set("host", config.Host)
 	viper.Set("port", config.Port)
 	viper.Set("chat_enabled", config.ChatEnabled)
+	viper.Set("check_updates", config.CheckUpdates)
 
 	return viper.WriteConfig()
 }
