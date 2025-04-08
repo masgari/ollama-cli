@@ -1,0 +1,27 @@
+name: "OSSAR Scan"
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+  schedule:
+    - cron: '0 0 * * 0'
+
+jobs:
+  ossar-scan:
+    name: OSSAR Scan
+    runs-on: ubuntu-latest
+    permissions:
+      security-events: write
+      actions: read
+      contents: read
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Run OSSAR Scan
+        uses: github/ossar-action@v1
+        with:
+          languages: go 
