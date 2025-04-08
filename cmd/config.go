@@ -12,8 +12,9 @@ import (
 )
 
 var (
-	configHost string
-	configPort int
+	configHost         string
+	configPort         int
+	configCheckUpdates bool
 )
 
 // configCmd represents the config command
@@ -25,13 +26,16 @@ var configCmd = &cobra.Command{
 You can view or update the configuration for the Ollama CLI.`,
 	Run: func(cmd *cobra.Command, args []string) {
 		// If flags are provided, update the configuration
-		if cmd.Flags().Changed("host") || cmd.Flags().Changed("port") {
+		if cmd.Flags().Changed("host") || cmd.Flags().Changed("port") || cmd.Flags().Changed("check-updates") {
 			// Update the configuration
 			if cmd.Flags().Changed("host") {
 				cfg.Host = configHost
 			}
 			if cmd.Flags().Changed("port") {
 				cfg.Port = configPort
+			}
+			if cmd.Flags().Changed("check-updates") {
+				cfg.CheckUpdates = configCheckUpdates
 			}
 
 			// Save the configuration
@@ -49,6 +53,7 @@ You can view or update the configuration for the Ollama CLI.`,
 		fmt.Printf("  %s: %s\n", output.MakeHeader("Port"), output.Highlight(strconv.Itoa(cfg.Port)))
 		fmt.Printf("  %s: %s\n", output.MakeHeader("URL"), output.Highlight(cfg.GetServerURL()))
 		fmt.Printf("  %s: %s\n", output.MakeHeader("Chat Enabled"), output.Highlight(strconv.FormatBool(cfg.ChatEnabled)))
+		fmt.Printf("  %s: %s\n", output.MakeHeader("Check Updates"), output.Highlight(strconv.FormatBool(cfg.CheckUpdates)))
 	},
 }
 
@@ -72,6 +77,13 @@ var configSetCmd = &cobra.Command{
 				return
 			}
 			cfg.Port = port
+		case "check-updates":
+			checkUpdates, err := strconv.ParseBool(value)
+			if err != nil {
+				output.Default.ErrorPrintln("Error: check-updates must be a boolean (true/false)")
+				return
+			}
+			cfg.CheckUpdates = checkUpdates
 		default:
 			output.Default.ErrorPrintf("Error: unknown configuration key: %s\n", key)
 			return
@@ -192,4 +204,5 @@ func init() {
 	// Add flags for the config command
 	configCmd.Flags().StringVar(&configHost, "host", "", "Ollama server host")
 	configCmd.Flags().IntVar(&configPort, "port", 0, "Ollama server port")
+	configCmd.Flags().BoolVar(&configCheckUpdates, "check-updates", true, "Check for updates")
 }

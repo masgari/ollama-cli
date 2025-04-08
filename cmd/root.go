@@ -6,6 +6,7 @@ import (
 
 	"github.com/masgari/ollama-cli/pkg/config"
 	"github.com/masgari/ollama-cli/pkg/output"
+	"github.com/masgari/ollama-cli/pkg/version"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 )
@@ -16,6 +17,7 @@ var (
 	cfg        *config.Config
 	noColor    bool
 	verbose    bool
+	noUpdates  bool
 )
 
 // GetConfig returns the current configuration
@@ -56,6 +58,15 @@ It allows you to manage models, run inferences, and more.`,
 
 		return nil
 	},
+	PersistentPostRun: func(cmd *cobra.Command, args []string) {
+		// Check for updates if enabled in config and not disabled by flag
+		if cfg.CheckUpdates && !noUpdates {
+			hasUpdate, current, latest, err := version.CheckForUpdates(Version)
+			if err == nil && hasUpdate {
+				output.ShowUpdateNotification(current, latest)
+			}
+		}
+	},
 }
 
 // Execute adds all child commands to the root command and sets flags appropriately.
@@ -76,6 +87,7 @@ func init() {
 	rootCmd.PersistentFlags().Int("port", 0, "Ollama server port (default is 11434)")
 	rootCmd.PersistentFlags().BoolVar(&noColor, "no-color", false, "Disable color output")
 	rootCmd.PersistentFlags().BoolVarP(&verbose, "verbose", "v", false, "verbose output")
+	rootCmd.PersistentFlags().BoolVar(&noUpdates, "no-updates", false, "Disable update checks")
 }
 
 // initConfig reads in config file and ENV variables if set.

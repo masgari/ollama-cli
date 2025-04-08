@@ -58,6 +58,7 @@ Flags:
   -h, --help                 help for ollama-cli
   -H, --host string          Ollama server host (default is localhost)
       --no-color             Disable color output
+      --no-updates           Disable update checks
   -p, --port int             Ollama server port (default is 11434)
   -v, --verbose              verbose output
 
@@ -185,6 +186,43 @@ ollama-cli list --output wide
 # JSON output for scripting
 ollama-cli list --output json
 ```
+
+### Shell Completion
+
+Ollama CLI provides shell completion support for bash, zsh, and other shells:
+
+```bash
+# Generate completion script for your shell
+ollama-cli completion zsh > ~/.ollama-cli/_ollama-cli
+ollama-cli completion bash > ~/.ollama-cli/ollama-cli.bash
+
+# For zsh, add to your ~/.zshrc:
+fpath=(~/.ollama-cli $fpath)
+autoload -U compinit && compinit
+
+# For bash, add to your ~/.bashrc:
+source ~/.ollama-cli/ollama-cli.bash
+```
+
+After adding the completion script and reloading your shell, you'll get:
+- Command completion
+- Flag completion
+- Model name completion
+- Config name completion
+
+### Automatic Update Notifications
+
+Ollama CLI automatically checks for updates when you run any command. If a newer version is available, you'll see a notification at the end of the command output:
+
+```
+UPDATE: A new version of Ollama CLI is available: 1.0.0 → 1.1.0
+Visit https://github.com/masgari/ollama-cli/releases to download the latest version.
+```
+
+You can disable update checks in several ways:
+- Using the `--no-updates` flag: `ollama-cli --no-updates list` for a single command
+- In your config file: Run `ollama-cli config set check-updates false` or set `check_updates: false` in `~/.ollama-cli/config.yaml`
+- For a specific config: `ollama-cli -c pc config --check-updates=false`
 
 ## Configuration
 
