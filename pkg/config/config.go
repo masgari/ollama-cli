@@ -15,6 +15,7 @@ var CurrentConfigName string
 type Config struct {
 	Host         string `mapstructure:"host"`
 	Port         int    `mapstructure:"port"`
+	Tls          bool   `mapstructure:"tls"`
 	ChatEnabled  bool   `mapstructure:"chat_enabled"`
 	CheckUpdates bool   `mapstructure:"check_updates"`
 }
@@ -24,6 +25,7 @@ func DefaultConfig() *Config {
 	return &Config{
 		Host:         "localhost",
 		Port:         11434,
+		Tls:          false,
 		ChatEnabled:  false, // Chat is disabled by default
 		CheckUpdates: true,  // Check for updates by default
 	}
@@ -31,7 +33,11 @@ func DefaultConfig() *Config {
 
 // GetServerURL returns the full URL to the Ollama server
 func (c *Config) GetServerURL() string {
-	return fmt.Sprintf("http://%s:%d", c.Host, c.Port)
+	protocol := "http"
+	if c.Tls {
+		protocol = "https"
+	}
+	return fmt.Sprintf("%s://%s:%d", protocol, c.Host, c.Port)
 }
 
 // LoadConfig loads the configuration from the config file
@@ -60,6 +66,7 @@ func LoadConfig(configName ...string) (*Config, error) {
 		viper.SetConfigFile(configFile)
 		viper.Set("host", defaultConfig.Host)
 		viper.Set("port", defaultConfig.Port)
+		viper.Set("tls", defaultConfig.Tls)
 		viper.Set("chat_enabled", defaultConfig.ChatEnabled)
 		viper.Set("check_updates", defaultConfig.CheckUpdates)
 		if err := viper.WriteConfig(); err != nil {
@@ -98,6 +105,7 @@ func SaveConfig(config *Config, configName ...string) error {
 	viper.SetConfigFile(configFile)
 	viper.Set("host", config.Host)
 	viper.Set("port", config.Port)
+	viper.Set("tls", config.Tls)
 	viper.Set("chat_enabled", config.ChatEnabled)
 	viper.Set("check_updates", config.CheckUpdates)
 
