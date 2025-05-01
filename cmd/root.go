@@ -55,6 +55,10 @@ It allows you to manage models, run inferences, and more.`,
 			port, _ := cmd.Flags().GetInt("port")
 			cfg.Port = port
 		}
+		if cmd.Flags().Changed("tls") {
+			tls, _ := cmd.Flags().GetBool("tls")
+			cfg.Tls = tls
+		}
 
 		return nil
 	},
@@ -85,6 +89,7 @@ func init() {
 	rootCmd.PersistentFlags().StringVarP(&configName, "config-name", "c", "", "config name to use (e.g. 'pc' for $HOME/.ollama-cli/pc.yaml)")
 	rootCmd.PersistentFlags().StringP("host", "H", "", "Ollama server host (default is localhost)")
 	rootCmd.PersistentFlags().Int("port", 0, "Ollama server port (default is 11434)")
+	rootCmd.PersistentFlags().Bool("tls", false, "Use TLS for Ollama server connection")
 	rootCmd.PersistentFlags().BoolVar(&noColor, "no-color", false, "Disable color output")
 	rootCmd.PersistentFlags().BoolVarP(&verbose, "verbose", "v", false, "verbose output")
 	rootCmd.PersistentFlags().BoolVar(&noUpdates, "no-updates", false, "Disable update checks")

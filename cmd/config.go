@@ -14,6 +14,7 @@ import (
 var (
 	configHost         string
 	configPort         int
+	configTls          bool
 	configCheckUpdates bool
 )
 
@@ -34,6 +35,9 @@ You can view or update the configuration for the Ollama CLI.`,
 			if cmd.Flags().Changed("port") {
 				cfg.Port = configPort
 			}
+			if cmd.Flags().Changed("tls") {
+				cfg.Tls = configTls
+			}
 			if cmd.Flags().Changed("check-updates") {
 				cfg.CheckUpdates = configCheckUpdates
 			}
@@ -51,6 +55,7 @@ You can view or update the configuration for the Ollama CLI.`,
 		output.Default.HeaderPrintln("Current configuration:")
 		fmt.Printf("  %s: %s\n", output.MakeHeader("Host"), output.Highlight(cfg.Host))
 		fmt.Printf("  %s: %s\n", output.MakeHeader("Port"), output.Highlight(strconv.Itoa(cfg.Port)))
+		fmt.Printf("  %s: %s\n", output.MakeHeader("Tls"), output.Highlight(strconv.FormatBool(cfg.Tls)))
 		fmt.Printf("  %s: %s\n", output.MakeHeader("URL"), output.Highlight(cfg.GetServerURL()))
 		fmt.Printf("  %s: %s\n", output.MakeHeader("Chat Enabled"), output.Highlight(strconv.FormatBool(cfg.ChatEnabled)))
 		fmt.Printf("  %s: %s\n", output.MakeHeader("Check Updates"), output.Highlight(strconv.FormatBool(cfg.CheckUpdates)))
@@ -77,6 +82,13 @@ var configSetCmd = &cobra.Command{
 				return
 			}
 			cfg.Port = port
+		case "tls":
+			tls, err := strconv.ParseBool(value)
+			if err != nil {
+				output.Default.ErrorPrintln("Error: tls must be a boolean (true/false)")
+				return
+			}
+			cfg.Tls = tls
 		case "check-updates":
 			checkUpdates, err := strconv.ParseBool(value)
 			if err != nil {
@@ -114,6 +126,8 @@ var configGetCmd = &cobra.Command{
 			fmt.Println(output.Highlight(cfg.Host))
 		case "port":
 			fmt.Println(output.Highlight(strconv.Itoa(cfg.Port)))
+		case "tls":
+			fmt.Println(output.Highlight(strconv.FormatBool(cfg.Tls)))
 		case "url":
 			fmt.Println(output.Highlight(cfg.GetServerURL()))
 		case "chat_enabled":
@@ -204,5 +218,6 @@ func init() {
 	// Add flags for the config command
 	configCmd.Flags().StringVar(&configHost, "host", "", "Ollama server host")
 	configCmd.Flags().IntVar(&configPort, "port", 0, "Ollama server port")
+	configCmd.Flags().BoolVar(&configTls, "tls", false, "Use TLS for Ollama server connection")
 	configCmd.Flags().BoolVar(&configCheckUpdates, "check-updates", true, "Check for updates")
 }
