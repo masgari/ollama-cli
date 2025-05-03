@@ -19,6 +19,10 @@ on:
       - 'Makefile'     # Run on build config changes
       - '.github/workflows/build-test.yml'  # Run when this workflow changes
 
+# Explicitly set minimal permissions
+permissions:
+  contents: read
+
 jobs:
   build:
     runs-on: ubuntu-latest
