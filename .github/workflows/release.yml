@@ -1,6 +1,7 @@
 name: Release
 
 on:
+  workflow_dispatch:  # Add manual trigger option
   push:
     tags:
       - 'v*'
@@ -15,6 +16,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v4
+      with:
+        fetch-depth: 0  # Fetch all history for tags
     
     - name: Set up Go
       uses: actions/setup-go@v5
