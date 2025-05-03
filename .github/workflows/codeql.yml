@@ -1,12 +1,23 @@
 name: "CodeQL"
 
 on:
+  workflow_dispatch:  # Add manual trigger option
   push:
     branches: [ main ]
+    paths:
+      - '**/*.go'      # Only run on Go file changes
+      - 'go.mod'       # Run on dependency changes
+      - 'go.sum'
+      - '.github/workflows/codeql.yml'  # Run when this workflow changes
   pull_request:
     branches: [ main ]
+    paths:
+      - '**/*.go'      # Only run on Go file changes
+      - 'go.mod'       # Run on dependency changes
+      - 'go.sum'
+      - '.github/workflows/codeql.yml'  # Run when this workflow changes
   schedule:
-    - cron: '0 0 * * 0'
+    - cron: '0 0 * * 0'  # Keep weekly runs for full scans
 
 jobs:
   analyze:
@@ -39,3 +50,12 @@ jobs:
       uses: github/codeql-action/analyze@v3
       with:
         category: "/language:${{matrix.language}}"
+        
+    # Save the results as an artifact as well
+    - name: Upload SARIF file
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: codeql-results
+        path: /home/runner/work/ollama-cli/results/*.sarif
+        retention-days: 60

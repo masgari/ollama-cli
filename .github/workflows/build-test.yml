@@ -1,10 +1,27 @@
 name: Build and Test
 
 on:
+  workflow_dispatch:  # Add manual trigger option
   push:
     branches: [ main ]
+    paths:
+      - '**/*.go'      # Only run on Go file changes
+      - 'go.mod'       # Run on dependency changes
+      - 'go.sum'
+      - 'Makefile'     # Run on build config changes
+      - '.github/workflows/build-test.yml'  # Run when this workflow changes
   pull_request:
     branches: [ main ]
+    paths:
+      - '**/*.go'      # Only run on Go file changes
+      - 'go.mod'       # Run on dependency changes
+      - 'go.sum'
+      - 'Makefile'     # Run on build config changes
+      - '.github/workflows/build-test.yml'  # Run when this workflow changes
+
+# Explicitly set minimal permissions
+permissions:
+  contents: read
 
 jobs:
   build:

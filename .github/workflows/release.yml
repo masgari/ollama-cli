@@ -1,20 +1,23 @@
 name: Release
 
 on:
+  workflow_dispatch:  # Add manual trigger option
   push:
     tags:
       - 'v*'
 
-# Add permissions section here
+# Specify minimum required permissions
 permissions:
-  contents: write
-  packages: write
+  contents: write  # Required for creating releases and uploading assets
+  id-token: write  # Required for GITHUB_TOKEN authentication
 
 jobs:
   release:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v4
+      with:
+        fetch-depth: 0  # Fetch all history for tags
     
     - name: Set up Go
       uses: actions/setup-go@v5
