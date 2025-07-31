@@ -94,11 +94,19 @@ Create and switch between configurations for different Ollama servers:
 # Set up configurations for different servers
 ollama-cli config --host 192.168.1.90 # uses default config in ~/.ollama-cli/config.yaml
 
-ollama-cli -c pi5 config --host 192.168.1.100 # uses config in ~/.ollama-cli/pi5.yaml
-ollama-cli -c pc config --host 192.168.1.101 # uses config in ~/.ollama-cli/pc.yaml
+# create new config in ~/.ollama-cli/pi5.yaml
+ollama-cli -c pi5 config --host 192.168.1.100
 
-# Use a specific configuration
+# create new config in ~/.ollama-cli/pc.yaml
+ollama-cli -c pc config --host 192.168.1.101
+
+# Use a specific configuration (uses ~/.ollama-cli/pi5.yaml)
+ollama-cli -c pi5 list
+
+# Use a specific configuration (uses ~/.ollama-cli/pc.yaml)
 ollama-cli -c pc list
+
+ollama-cli chat -c pi5 [press tab to see available models on pi5]
 ```
 
 ### Manage Remote Models
@@ -191,17 +199,17 @@ ollama-cli list --output json
 
 Ollama CLI provides shell completion support for bash, zsh, and other shells:
 
-```bash
-# Generate completion script for your shell
-ollama-cli completion zsh > ~/.ollama-cli/_ollama-cli
-ollama-cli completion bash > ~/.ollama-cli/ollama-cli.bash
+```zsh
+# Get detailed completion instructions for your shell
+ollama-cli completion -h
 
-# For zsh, add to your ~/.zshrc:
-fpath=(~/.ollama-cli $fpath)
+# Example for zsh on macOS:
+ollama-cli completion zsh > $(brew --prefix)/share/zsh/site-functions/_ollama-cli
+```
+
+Make sure completion is enabled in your ~/.zshrc:
+```zsh
 autoload -U compinit && compinit
-
-# For bash, add to your ~/.bashrc:
-source ~/.ollama-cli/ollama-cli.bash
 ```
 
 After adding the completion script and reloading your shell, you'll get:
@@ -209,6 +217,8 @@ After adding the completion script and reloading your shell, you'll get:
 - Flag completion
 - Model name completion
 - Config name completion
+
+**Try it out!** Open a new terminal tab and type `ollama-cli chat ` (with a space) then hit tab to see available models!
 
 ### Automatic Update Notifications
 

@@ -14,11 +14,12 @@ var (
 
 // rmCmd represents the rm command
 var rmCmd = &cobra.Command{
-	Use:     "rm [model]",
-	Aliases: []string{"delete", "remove"},
-	Short:   "Remove a model from the Ollama server",
-	Long:    `Remove a model and its data from the remote Ollama server.`,
-	Args:    cobra.ExactArgs(1),
+	Use:               "rm [model]",
+	Aliases:           []string{"delete", "remove"},
+	Short:             "Remove a model from the Ollama server",
+	Long:              `Remove a model and its data from the remote Ollama server.`,
+	Args:              cobra.ExactArgs(1),
+	ValidArgsFunction: completeModelNames,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		modelName := args[0]
 
