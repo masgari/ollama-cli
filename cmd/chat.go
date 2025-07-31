@@ -114,6 +114,14 @@ Examples:
   ollama-cli chat llama3.2 --prompt "Hello" --stats --no-stream
   ollama-cli chat llama3.2 -p "Hello" --stats --no-stream`,
 	Args: cobra.ExactArgs(1),
+	ValidArgsFunction: func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
+		// Skip completion if chat is not enabled
+		if !cfg.ChatEnabled {
+			return nil, cobra.ShellCompDirectiveNoFileComp
+		}
+
+		return completeModelNames(cmd, args, toComplete)
+	},
 	RunE: func(cmd *cobra.Command, args []string) error {
 		// Check if help flag is provided
 		if cmd.Flags().Changed("help") || cmd.Flags().Changed("h") {
