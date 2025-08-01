@@ -96,10 +96,34 @@ func (c *OllamaClient) createClient(timeout time.Duration, forPull bool) *api.Cl
 		DisableCompression: false,
 	}
 
-	return api.NewClient(c.serverURL, &http.Client{
+	httpClient := &http.Client{
 		Timeout:   timeout,
 		Transport: transport,
-	})
+	}
+
+	// Add custom headers to all requests if configured
+	if len(c.config.Headers) > 0 {
+		httpClient.Transport = &headerTransport{
+			base:    transport,
+			headers: c.config.Headers,
+		}
+	}
+
+	return api.NewClient(c.serverURL, httpClient)
+}
+
+// headerTransport wraps the base transport to add custom headers
+type headerTransport struct {
+	base    http.RoundTripper
+	headers map[string]string
+}
+
+func (t *headerTransport) RoundTrip(req *http.Request) (*http.Response, error) {
+	// Add all configured headers to the request
+	for key, value := range t.headers {
+		req.Header.Set(key, value)
+	}
+	return t.base.RoundTrip(req)
 }
 
 // ListModels lists all models available on the Ollama server
