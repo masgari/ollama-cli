@@ -56,11 +56,11 @@ func TestConfigCommand(t *testing.T) {
 		config.GetConfigDir = origGetConfigDir
 	}()
 
-	// Initialize cfg with a default config
-	origCfg := cfg
-	cfg = config.DefaultConfig()
+	// Initialize current config with a default config
+	origCfg := config.Current
+	config.Current = config.DefaultConfig()
 	defer func() {
-		cfg = origCfg
+		config.Current = origCfg
 	}()
 
 	// Save the original configName and restore it after the test
@@ -163,11 +163,11 @@ func TestConfigSetCommand(t *testing.T) {
 		config.GetConfigDir = origGetConfigDir
 	}()
 
-	// Initialize cfg with a default config
-	origCfg := cfg
-	cfg = config.DefaultConfig()
+	// Initialize current config with a default config
+	origCfg := config.Current
+	config.Current = config.DefaultConfig()
 	defer func() {
-		cfg = origCfg
+		config.Current = origCfg
 	}()
 
 	// Save the original configName and restore it after the test
@@ -272,14 +272,14 @@ func TestConfigGetCommand(t *testing.T) {
 		config.GetConfigDir = origGetConfigDir
 	}()
 
-	// Initialize cfg with a test config
-	origCfg := cfg
-	cfg = &config.Config{
+	// Initialize current config with a test config
+	origCfg := config.Current
+	config.Current = &config.Config{
 		Host: "test.example.com",
 		Port: 5555,
 	}
 	defer func() {
-		cfg = origCfg
+		config.Current = origCfg
 	}()
 
 	// Save the original configName and restore it after the test
@@ -291,7 +291,7 @@ func TestConfigGetCommand(t *testing.T) {
 	}()
 
 	// Save the test config
-	if err := config.SaveConfig(cfg, configName); err != nil {
+	if err := config.SaveConfig(config.Current, configName); err != nil {
 		t.Fatalf("Failed to save test config: %v", err)
 	}
 
@@ -386,11 +386,11 @@ func TestConfigListCommand(t *testing.T) {
 		config.GetConfigDir = origGetConfigDir
 	}()
 
-	// Initialize cfg with a default config
-	origCfg := cfg
-	cfg = config.DefaultConfig()
+	// Initialize current config with a default config
+	origCfg := config.Current
+	config.Current = config.DefaultConfig()
 	defer func() {
-		cfg = origCfg
+		config.Current = origCfg
 	}()
 
 	// Save the original configName and restore it after the test
@@ -467,11 +467,11 @@ func TestConfigListCommand(t *testing.T) {
 }
 
 func TestConfigCommandFlags(t *testing.T) {
-	// Initialize cfg with a default config
-	origCfg := cfg
-	cfg = config.DefaultConfig()
+	// Initialize current config with a default config
+	origCfg := config.Current
+	config.Current = config.DefaultConfig()
 	defer func() {
-		cfg = origCfg
+		config.Current = origCfg
 	}()
 
 	// Test that all flags are properly defined
@@ -516,15 +516,15 @@ func TestConfigEnableChatCommand(t *testing.T) {
 		config.GetConfigDir = origGetConfigDir
 	}()
 
-	// Initialize cfg if it's nil
-	origCfg := cfg
-	cfg = &config.Config{
+	// Initialize current config if it's nil
+	origCfg := config.Current
+	config.Current = &config.Config{
 		Host:        "localhost",
 		Port:        11434,
 		ChatEnabled: false,
 	}
 	defer func() {
-		cfg = origCfg
+		config.Current = origCfg
 	}()
 
 	// Save the original configName and restore it after the test
@@ -547,7 +547,7 @@ func TestConfigEnableChatCommand(t *testing.T) {
 	assert.NoError(t, err)
 
 	// Check that chat is enabled
-	assert.True(t, cfg.ChatEnabled)
+	assert.True(t, config.Current.ChatEnabled)
 }
 
 // TestConfigDisableChatCommand tests the config disable-chat command
@@ -568,15 +568,15 @@ func TestConfigDisableChatCommand(t *testing.T) {
 		config.GetConfigDir = origGetConfigDir
 	}()
 
-	// Initialize cfg if it's nil
-	origCfg := cfg
-	cfg = &config.Config{
+	// Initialize current config if it's nil
+	origCfg := config.Current
+	config.Current = &config.Config{
 		Host:        "localhost",
 		Port:        11434,
 		ChatEnabled: true,
 	}
 	defer func() {
-		cfg = origCfg
+		config.Current = origCfg
 	}()
 
 	// Save the original configName and restore it after the test
@@ -599,7 +599,7 @@ func TestConfigDisableChatCommand(t *testing.T) {
 	assert.NoError(t, err)
 
 	// Check that chat is disabled
-	assert.False(t, cfg.ChatEnabled)
+	assert.False(t, config.Current.ChatEnabled)
 }
 
 // TestConfigGetChatEnabled tests the config get chat_enabled command
@@ -620,15 +620,15 @@ func TestConfigGetChatEnabled(t *testing.T) {
 		config.GetConfigDir = origGetConfigDir
 	}()
 
-	// Initialize cfg if it's nil
-	origCfg := cfg
-	cfg = &config.Config{
+	// Initialize current config if it's nil
+	origCfg := config.Current
+	config.Current = &config.Config{
 		Host:        "localhost",
 		Port:        11434,
 		ChatEnabled: true,
 	}
 	defer func() {
-		cfg = origCfg
+		config.Current = origCfg
 	}()
 
 	// Save the original configName and restore it after the test
@@ -640,7 +640,7 @@ func TestConfigGetChatEnabled(t *testing.T) {
 	}()
 
 	// Save the test config
-	if err := config.SaveConfig(cfg, configName); err != nil {
+	if err := config.SaveConfig(config.Current, configName); err != nil {
 		t.Fatalf("Failed to save test config: %v", err)
 	}
 
@@ -676,7 +676,7 @@ func TestConfigGetChatEnabled(t *testing.T) {
 	assert.Contains(t, output, "true")
 
 	// Test with chat disabled
-	cfg.ChatEnabled = false
+	config.Current.ChatEnabled = false
 
 	buf.Reset()
 	r, w, _ = os.Pipe()

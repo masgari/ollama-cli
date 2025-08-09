@@ -56,8 +56,8 @@ func enableChatCommand() error {
 	}
 
 	// Enable chat in the configuration
-	cfg.ChatEnabled = true
-	if err := config.SaveConfig(cfg, config.CurrentConfigName); err != nil {
+	config.Current.ChatEnabled = true
+	if err := config.SaveConfig(config.Current, config.CurrentConfigName); err != nil {
 		return fmt.Errorf("failed to enable chat: %w", err)
 	}
 
@@ -116,7 +116,7 @@ Examples:
 	Args: cobra.ExactArgs(1),
 	ValidArgsFunction: func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
 		// Skip completion if chat is not enabled
-		if !cfg.ChatEnabled {
+		if !config.Current.ChatEnabled {
 			return nil, cobra.ShellCompDirectiveNoFileComp
 		}
 
@@ -129,7 +129,7 @@ Examples:
 		}
 
 		// Check if chat is enabled in the configuration
-		if !cfg.ChatEnabled {
+		if !config.Current.ChatEnabled {
 			if err := enableChatCommand(); err != nil {
 				// If the error message is "chat command not enabled", return nil to exit gracefully
 				if err.Error() == "chat command not enabled" {

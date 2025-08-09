@@ -118,15 +118,15 @@ func TestRemoveCommand(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			// Save original config and restore it after the test
-			origCfg := cfg
-			defer func() { cfg = origCfg }()
+			origCfg := config.Current
+			defer func() { config.Current = origCfg }()
 
 			// Save original forceDelete flag and restore it after the test
 			origForceDelete := forceDelete
 			defer func() { forceDelete = origForceDelete }()
 
 			// Set test config
-			cfg = config.DefaultConfig()
+			config.Current = config.DefaultConfig()
 			forceDelete = tt.forceFlag
 
 			// Set up the mock client

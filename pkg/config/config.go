@@ -11,6 +11,12 @@ import (
 // CurrentConfigName holds the name of the current configuration
 var CurrentConfigName string
 
+// Current holds the in-memory active configuration selected by the CLI.
+// When set by the command layer after applying flag/env overrides, client
+// constructors should prefer this over reloading from disk to ensure
+// runtime overrides are respected.
+var Current *Config
+
 // Config holds the configuration for the Ollama CLI
 type Config struct {
 	Host         string            `mapstructure:"host"`
