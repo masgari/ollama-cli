@@ -36,7 +36,12 @@ type clientFactory func() (Client, error)
 
 // defaultClientFactory is the default implementation of clientFactory
 var defaultClientFactory clientFactory = func() (Client, error) {
-	// Load config using the global configuration name
+	// Prefer the in-memory current config if present (set by CLI after overrides)
+	if config.Current != nil {
+		return New(config.Current)
+	}
+
+	// Fallback: Load config using the global configuration name
 	cfg, err := config.LoadConfig(config.CurrentConfigName)
 	if err != nil {
 		return nil, fmt.Errorf("failed to load config: %w", err)

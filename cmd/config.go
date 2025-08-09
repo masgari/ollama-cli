@@ -30,20 +30,20 @@ You can view or update the configuration for the Ollama CLI.`,
 		if cmd.Flags().Changed("host") || cmd.Flags().Changed("port") || cmd.Flags().Changed("check-updates") {
 			// Update the configuration
 			if cmd.Flags().Changed("host") {
-				cfg.Host = configHost
+				config.Current.Host = configHost
 			}
 			if cmd.Flags().Changed("port") {
-				cfg.Port = configPort
+				config.Current.Port = configPort
 			}
 			if cmd.Flags().Changed("tls") {
-				cfg.Tls = configTls
+				config.Current.Tls = configTls
 			}
 			if cmd.Flags().Changed("check-updates") {
-				cfg.CheckUpdates = configCheckUpdates
+				config.Current.CheckUpdates = configCheckUpdates
 			}
 
 			// Save the configuration
-			if err := config.SaveConfig(cfg, configName); err != nil {
+			if err := config.SaveConfig(config.Current, configName); err != nil {
 				output.Default.ErrorPrintf("Error saving configuration: %v\n", err)
 				return
 			}
@@ -53,6 +53,7 @@ You can view or update the configuration for the Ollama CLI.`,
 
 		// Display the current configuration
 		output.Default.HeaderPrintln("Current configuration:")
+		cfg := config.Current
 		fmt.Printf("  %s: %s\n", output.MakeHeader("Host"), output.Highlight(cfg.Host))
 		fmt.Printf("  %s: %s\n", output.MakeHeader("Port"), output.Highlight(strconv.Itoa(cfg.Port)))
 		fmt.Printf("  %s: %s\n", output.MakeHeader("Tls"), output.Highlight(strconv.FormatBool(cfg.Tls)))
@@ -74,35 +75,35 @@ var configSetCmd = &cobra.Command{
 
 		switch key {
 		case "host":
-			cfg.Host = value
+			config.Current.Host = value
 		case "port":
 			port, err := strconv.Atoi(value)
 			if err != nil {
 				output.Default.ErrorPrintln("Error: port must be a number")
 				return
 			}
-			cfg.Port = port
+			config.Current.Port = port
 		case "tls":
 			tls, err := strconv.ParseBool(value)
 			if err != nil {
 				output.Default.ErrorPrintln("Error: tls must be a boolean (true/false)")
 				return
 			}
-			cfg.Tls = tls
+			config.Current.Tls = tls
 		case "check-updates":
 			checkUpdates, err := strconv.ParseBool(value)
 			if err != nil {
 				output.Default.ErrorPrintln("Error: check-updates must be a boolean (true/false)")
 				return
 			}
-			cfg.CheckUpdates = checkUpdates
+			config.Current.CheckUpdates = checkUpdates
 		default:
 			output.Default.ErrorPrintf("Error: unknown configuration key: %s\n", key)
 			return
 		}
 
 		// Save the configuration
-		if err := config.SaveConfig(cfg, configName); err != nil {
+		if err := config.SaveConfig(config.Current, configName); err != nil {
 			output.Default.ErrorPrintf("Error saving configuration: %v\n", err)
 			return
 		}
@@ -123,15 +124,15 @@ var configGetCmd = &cobra.Command{
 
 		switch key {
 		case "host":
-			fmt.Println(output.Highlight(cfg.Host))
+			fmt.Println(output.Highlight(config.Current.Host))
 		case "port":
-			fmt.Println(output.Highlight(strconv.Itoa(cfg.Port)))
+			fmt.Println(output.Highlight(strconv.Itoa(config.Current.Port)))
 		case "tls":
-			fmt.Println(output.Highlight(strconv.FormatBool(cfg.Tls)))
+			fmt.Println(output.Highlight(strconv.FormatBool(config.Current.Tls)))
 		case "url":
-			fmt.Println(output.Highlight(cfg.GetServerURL()))
+			fmt.Println(output.Highlight(config.Current.GetServerURL()))
 		case "chat_enabled":
-			fmt.Println(output.Highlight(strconv.FormatBool(cfg.ChatEnabled)))
+			fmt.Println(output.Highlight(strconv.FormatBool(config.Current.ChatEnabled)))
 		default:
 			output.Default.ErrorPrintf("Error: unknown configuration key: %s\n", key)
 		}
@@ -183,8 +184,8 @@ var configEnableChatCmd = &cobra.Command{
 	Short: "Enable the chat command",
 	Long:  `Enable the chat command in the configuration.`,
 	Run: func(cmd *cobra.Command, args []string) {
-		cfg.ChatEnabled = true
-		if err := config.SaveConfig(cfg, configName); err != nil {
+		config.Current.ChatEnabled = true
+		if err := config.SaveConfig(config.Current, configName); err != nil {
 			output.Default.ErrorPrintf("Error saving configuration: %v\n", err)
 			return
 		}
@@ -198,8 +199,8 @@ var configDisableChatCmd = &cobra.Command{
 	Short: "Disable the chat command",
 	Long:  `Disable the chat command in the configuration.`,
 	Run: func(cmd *cobra.Command, args []string) {
-		cfg.ChatEnabled = false
-		if err := config.SaveConfig(cfg, configName); err != nil {
+		config.Current.ChatEnabled = false
+		if err := config.SaveConfig(config.Current, configName); err != nil {
 			output.Default.ErrorPrintf("Error saving configuration: %v\n", err)
 			return
 		}

@@ -54,11 +54,11 @@ func TestPullCommand(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			// Save original config and restore it after the test
-			origCfg := cfg
-			defer func() { cfg = origCfg }()
+			origCfg := config.Current
+			defer func() { config.Current = origCfg }()
 
 			// Set test config
-			cfg = config.DefaultConfig()
+			config.Current = config.DefaultConfig()
 
 			// Set up the mock client
 			mockClient := client.NewMockClient()

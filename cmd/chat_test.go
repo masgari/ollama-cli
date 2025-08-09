@@ -99,14 +99,14 @@ func TestChatCommand(t *testing.T) {
 	cmd.AddCommand(chatCmd)
 
 	// Enable chat for testing
-	if cfg == nil {
-		cfg = &config.Config{
+	if config.Current == nil {
+		config.Current = &config.Config{
 			Host:        "localhost",
 			Port:        11434,
 			ChatEnabled: true,
 		}
 	} else {
-		cfg.ChatEnabled = true
+		config.Current.ChatEnabled = true
 	}
 
 	// Test with basic prompt

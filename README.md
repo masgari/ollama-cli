@@ -249,6 +249,37 @@ ollama-cli config --host remote-server.example.com --port 11434
 ollama-cli --host 192.168.1.200 list
 ```
 
+### Environment variables
+
+You can override global flags using environment variables with the `OLLAMA_CLI_` prefix.
+
+- Supported overrides (global flags only):
+  - `OLLAMA_CLI_HOST`
+  - `OLLAMA_CLI_PORT`
+  - `OLLAMA_CLI_TLS` (set to `true`/`false`)
+
+Example:
+
+```bash
+OLLAMA_CLI_PORT=8000 OLLAMA_CLI_HOST=my-remote-host ollama-cli list
+```
+
+Notes:
+- Only applies to global flags; per-command flags are not affected.
+- Precedence: CLI flags > environment variables > config file.
+
+### Custom HTTP headers
+
+You can add custom HTTP headers that will be sent with every request to the Ollama server. This is useful for authentication tokens, proxies, or tracing. Edit your config file manually (e.g., `~/.ollama-cli/config.yaml` or `~/.ollama-cli/<config-name>.yaml`) and add a `headers` section:
+
+```yaml
+headers:
+  Authorization: Bearer 1234567890
+  X-Custom-Header: custom-value
+```
+
+These headers are applied globally for that configuration and are included in all HTTP requests made by the CLI.
+
 ## Installation from Source
 
 ```bash

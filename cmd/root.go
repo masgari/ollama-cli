@@ -3,6 +3,7 @@ package cmd
 import (
 	"fmt"
 	"os"
+	"strings"
 
 	"github.com/masgari/ollama-cli/pkg/config"
 	"github.com/masgari/ollama-cli/pkg/output"
@@ -14,16 +15,13 @@ import (
 var (
 	cfgFile    string
 	configName string
-	cfg        *config.Config
 	noColor    bool
 	verbose    bool
 	noUpdates  bool
 )
 
 // GetConfig returns the current configuration
-func GetConfig() *config.Config {
-	return cfg
-}
+func GetConfig() *config.Config { return config.Current }
 
 // rootCmd represents the base command when called without any subcommands
 var rootCmd = &cobra.Command{
@@ -41,7 +39,7 @@ It allows you to manage models, run inferences, and more.`,
 		config.CurrentConfigName = configName
 
 		var err error
-		cfg, err = config.LoadConfig(configName)
+		loadedCfg, err := config.LoadConfig(configName)
 		if err != nil {
 			return fmt.Errorf("failed to load config: %w", err)
 		}
@@ -49,22 +47,25 @@ It allows you to manage models, run inferences, and more.`,
 		// Override config with command line flags if provided
 		if cmd.Flags().Changed("host") {
 			host, _ := cmd.Flags().GetString("host")
-			cfg.Host = host
+			loadedCfg.Host = host
 		}
 		if cmd.Flags().Changed("port") {
 			port, _ := cmd.Flags().GetInt("port")
-			cfg.Port = port
+			loadedCfg.Port = port
 		}
 		if cmd.Flags().Changed("tls") {
 			tls, _ := cmd.Flags().GetBool("tls")
-			cfg.Tls = tls
+			loadedCfg.Tls = tls
 		}
+
+		// Expose the final, effective configuration to the client factory.
+		config.Current = loadedCfg
 
 		return nil
 	},
 	PersistentPostRun: func(cmd *cobra.Command, args []string) {
 		// Check for updates if enabled in config and not disabled by flag
-		if cfg.CheckUpdates && !noUpdates {
+		if config.Current != nil && config.Current.CheckUpdates && !noUpdates {
 			hasUpdate, current, latest, err := version.CheckForUpdates(Version)
 			if err == nil && hasUpdate {
 				output.ShowUpdateNotification(current, latest)
@@ -120,6 +121,11 @@ func initConfig() {
 		}
 	}
 
+	// Only read environment variables prefixed with OLLAMA_CLI_
+	// e.g., OLLAMA_CLI_HOST, OLLAMA_CLI_PORT, OLLAMA_CLI_TLS, etc.
+	viper.SetEnvPrefix("OLLAMA_CLI")
+	// Normalize keys to env var form (dots/hyphens to underscores)
+	viper.SetEnvKeyReplacer(strings.NewReplacer(".", "_", "-", "_"))
 	viper.AutomaticEnv() // read in environment variables that match
 
 	// If a config file is found, read it in.
