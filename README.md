@@ -43,13 +43,13 @@ Usage:
 
 Available Commands:
   available   List models available on ollama.com
+  chat        Chat with an Ollama model
   completion  Generate the autocompletion script for the specified shell
   config      Configure the Ollama CLI
   help        Help about any command
   list        List models available on the Ollama server
   pull        Pull a model from the Ollama server
   rm          Remove a model from the Ollama server
-  chat        Chat with an Ollama model
   version     Display the version of the CLI tool
 
 Flags:
@@ -59,7 +59,9 @@ Flags:
   -H, --host string          Ollama server host (default is localhost)
       --no-color             Disable color output
       --no-updates           Disable update checks
-  -p, --port int             Ollama server port (default is 11434)
+      --path string          Ollama server path (empty by default)
+      --port int             Ollama server port (default is 11434)
+      --tls                  Use TLS for Ollama server connection
   -v, --verbose              verbose output
 
 Use "ollama-cli [command] --help" for more information about a command.

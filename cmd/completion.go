@@ -31,6 +31,10 @@ func completeModelNames(cmd *cobra.Command, args []string, toComplete string) ([
 		host, _ := cmd.Flags().GetString("host")
 		cfg.Host = host
 	}
+	if cmd.Flags().Changed("path") {
+		path, _ := cmd.Flags().GetString("path")
+		cfg.Path = path
+	}
 	if cmd.Flags().Changed("port") {
 		port, _ := cmd.Flags().GetInt("port")
 		cfg.Port = port
