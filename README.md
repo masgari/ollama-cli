@@ -59,6 +59,7 @@ Flags:
   -H, --host string          Ollama server host (default is localhost)
       --no-color             Disable color output
       --no-updates           Disable update checks
+      --path string          Ollama server path (empty by default)
   -p, --port int             Ollama server port (default is 11434)
   -v, --verbose              verbose output
 

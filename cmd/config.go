@@ -13,6 +13,7 @@ import (
 
 var (
 	configHost         string
+	configPath         string
 	configPort         int
 	configTls          bool
 	configCheckUpdates bool
@@ -23,14 +24,17 @@ var configCmd = &cobra.Command{
 	Use:   "config",
 	Short: "Configure the Ollama CLI",
 	Long: `Configure the Ollama CLI.
-	
+
 You can view or update the configuration for the Ollama CLI.`,
 	Run: func(cmd *cobra.Command, args []string) {
 		// If flags are provided, update the configuration
-		if cmd.Flags().Changed("host") || cmd.Flags().Changed("port") || cmd.Flags().Changed("check-updates") {
+		if cmd.Flags().Changed("host") || cmd.Flags().Changed("path") || cmd.Flags().Changed("port") || cmd.Flags().Changed("check-updates") {
 			// Update the configuration
 			if cmd.Flags().Changed("host") {
 				config.Current.Host = configHost
+			}
+			if cmd.Flags().Changed("path") {
+				config.Current.Path = configPath
 			}
 			if cmd.Flags().Changed("port") {
 				config.Current.Port = configPort
@@ -55,6 +59,7 @@ You can view or update the configuration for the Ollama CLI.`,
 		output.Default.HeaderPrintln("Current configuration:")
 		cfg := config.Current
 		fmt.Printf("  %s: %s\n", output.MakeHeader("Host"), output.Highlight(cfg.Host))
+		fmt.Printf("  %s: %s\n", output.MakeHeader("Path"), output.Highlight(cfg.Path))
 		fmt.Printf("  %s: %s\n", output.MakeHeader("Port"), output.Highlight(strconv.Itoa(cfg.Port)))
 		fmt.Printf("  %s: %s\n", output.MakeHeader("Tls"), output.Highlight(strconv.FormatBool(cfg.Tls)))
 		fmt.Printf("  %s: %s\n", output.MakeHeader("URL"), output.Highlight(cfg.GetServerURL()))
@@ -76,6 +81,8 @@ var configSetCmd = &cobra.Command{
 		switch key {
 		case "host":
 			config.Current.Host = value
+		case "path":
+			config.Current.Path = value
 		case "port":
 			port, err := strconv.Atoi(value)
 			if err != nil {
@@ -125,6 +132,8 @@ var configGetCmd = &cobra.Command{
 		switch key {
 		case "host":
 			fmt.Println(output.Highlight(config.Current.Host))
+		case "path":
+			fmt.Println(output.Highlight(config.Current.Path))
 		case "port":
 			fmt.Println(output.Highlight(strconv.Itoa(config.Current.Port)))
 		case "tls":
@@ -218,6 +227,7 @@ func init() {
 
 	// Add flags for the config command
 	configCmd.Flags().StringVar(&configHost, "host", "", "Ollama server host")
+	configCmd.Flags().StringVar(&configPath, "path", "", "Ollama server path")
 	configCmd.Flags().IntVar(&configPort, "port", 0, "Ollama server port")
 	configCmd.Flags().BoolVar(&configTls, "tls", false, "Use TLS for Ollama server connection")
 	configCmd.Flags().BoolVar(&configCheckUpdates, "check-updates", true, "Check for updates")
