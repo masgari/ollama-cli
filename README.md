@@ -62,7 +62,6 @@ Flags:
   -v, --verbose              verbose output
 
 Use "ollama-cli [command] --help" for more information about a command.
-
 ```
 
 ### Discover Available Models

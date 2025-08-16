@@ -33,7 +33,7 @@ type Config struct {
 // DefaultConfig returns the default configuration
 func DefaultConfig() *Config {
 	return &Config{
-		BaseUrl:      "",
+		BaseUrl:      "http://localhost:11434",
 		Host:         "localhost",
 		Path:         "",
 		Port:         11434,
