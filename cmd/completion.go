@@ -27,6 +27,10 @@ func completeModelNames(cmd *cobra.Command, args []string, toComplete string) ([
 	}
 
 	// Override config with command line flags if provided
+	if cmd.Flags().Changed("base-url") {
+		baseUrl, _ := cmd.Flags().GetString("base-url")
+		cfg.BaseUrl = baseUrl
+	}
 	if cmd.Flags().Changed("host") {
 		host, _ := cmd.Flags().GetString("host")
 		cfg.Host = host

@@ -53,18 +53,16 @@ Available Commands:
   version     Display the version of the CLI tool
 
 Flags:
+      --base-url string      Full Ollama server URL (e.g. https://example.com:11434/api)
       --config string        config file (default is $HOME/.ollama-cli/config.yaml)
   -c, --config-name string   config name to use (e.g. 'pc' for $HOME/.ollama-cli/pc.yaml)
   -h, --help                 help for ollama-cli
-  -H, --host string          Ollama server host (default is localhost)
       --no-color             Disable color output
       --no-updates           Disable update checks
-      --path string          Ollama server path (empty by default)
-      --port int             Ollama server port (default is 11434)
-      --tls                  Use TLS for Ollama server connection
   -v, --verbose              verbose output
 
 Use "ollama-cli [command] --help" for more information about a command.
+
 ```
 
 ### Discover Available Models

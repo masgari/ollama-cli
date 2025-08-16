@@ -83,10 +83,23 @@ func TestConfigCommand(t *testing.T) {
 			args:    []string{},
 			wantErr: false,
 			checkOutput: func(output string) bool {
-				return strings.Contains(output, "Host") &&
+				return strings.Contains(output, "Base URL") &&
+					strings.Contains(output, "Host") &&
 					strings.Contains(output, "Path") &&
 					strings.Contains(output, "Port") &&
 					strings.Contains(output, "URL")
+			},
+		},
+		{
+			name:    "Set base URL flag",
+			args:    []string{"--base-url", "https://example.com:8080/ollama"},
+			wantErr: false,
+			checkOutput: func(output string) bool {
+				return strings.Contains(output, "Base URL: https://example.com:8080/ollama\n") &&
+					strings.Contains(output, "Host: localhost\n") &&
+					strings.Contains(output, "Path: \n") &&
+					strings.Contains(output, "Port: 11434\n") &&
+					strings.Contains(output, "TLS: false\n")
 			},
 		},
 		{
@@ -98,6 +111,7 @@ func TestConfigCommand(t *testing.T) {
 					strings.Contains(output, "Host") &&
 					strings.Contains(output, "Path") &&
 					strings.Contains(output, "Port")
+
 			},
 		},
 		{
@@ -511,6 +525,16 @@ func TestConfigCommandFlags(t *testing.T) {
 
 	// Test that all flags are properly defined
 	cmd := configCmd
+
+	// Check base URL flag
+	baseUrlFlag := cmd.Flag("base-url")
+	if baseUrlFlag == nil {
+		t.Error("base URL flag not found")
+	} else {
+		if baseUrlFlag.DefValue != "" {
+			t.Errorf("base url flag default value = %q, want %q", baseUrlFlag.DefValue, "")
+		}
+	}
 
 	// Check host flag
 	hostFlag := cmd.Flag("host")

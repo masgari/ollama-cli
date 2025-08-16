@@ -68,3 +68,51 @@ func TestDefaultConfigHeaders(t *testing.T) {
 		t.Errorf("Expected empty headers map, got %d headers", len(config.Headers))
 	}
 }
+
+func TestGetServerURLWithBaseUrl(t *testing.T) {
+	tests := []struct {
+		name     string
+		baseUrl  string
+		host     string
+		port     int
+		path     string
+		tls      bool
+		expected string
+	}{
+		{
+			name:     "BaseUrl with scheme is used directly",
+			baseUrl:  "https://example.com:8080/custom",
+			host:     "ignored-host",
+			port:     1234,
+			path:     "/ignored-path",
+			tls:      true,
+			expected: "https://example.com:8080/custom",
+		},
+		{
+			name:     "BaseUrl without scheme gets http:// prefix",
+			baseUrl:  "example.com",
+			host:     "ignored-host",
+			port:     1234,
+			path:     "/ignored-path",
+			tls:      true,
+			expected: "http://example.com",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			cfg := &Config{
+				BaseUrl: tt.baseUrl,
+				Host:    tt.host,
+				Port:    tt.port,
+				Path:    tt.path,
+				Tls:     tt.tls,
+			}
+
+			got := cfg.GetServerURL()
+			if got != tt.expected {
+				t.Errorf("GetServerURL() = %q, want %q", got, tt.expected)
+			}
+		})
+	}
+}
