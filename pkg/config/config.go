@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/spf13/viper"
 )
@@ -19,7 +20,9 @@ var Current *Config
 
 // Config holds the configuration for the Ollama CLI
 type Config struct {
+	BaseUrl      string            `mapstructure:"base_url"`
 	Host         string            `mapstructure:"host"`
+	Path         string            `mapstructure:"path"`
 	Port         int               `mapstructure:"port"`
 	Tls          bool              `mapstructure:"tls"`
 	ChatEnabled  bool              `mapstructure:"chat_enabled"`
@@ -30,7 +33,9 @@ type Config struct {
 // DefaultConfig returns the default configuration
 func DefaultConfig() *Config {
 	return &Config{
+		BaseUrl:      "http://localhost:11434",
 		Host:         "localhost",
+		Path:         "",
 		Port:         11434,
 		Tls:          false,
 		ChatEnabled:  false, // Chat is disabled by default
@@ -41,11 +46,17 @@ func DefaultConfig() *Config {
 
 // GetServerURL returns the full URL to the Ollama server
 func (c *Config) GetServerURL() string {
+	if len(c.BaseUrl) > 0 {
+		if !strings.Contains(c.BaseUrl, "://") {
+			c.BaseUrl = "http://" + c.BaseUrl
+		}
+		return c.BaseUrl
+	}
 	protocol := "http"
 	if c.Tls {
 		protocol = "https"
 	}
-	return fmt.Sprintf("%s://%s:%d", protocol, c.Host, c.Port)
+	return fmt.Sprintf("%s://%s:%d%s", protocol, c.Host, c.Port, c.Path)
 }
 
 // LoadConfig loads the configuration from the config file
@@ -72,7 +83,9 @@ func LoadConfig(configName ...string) (*Config, error) {
 	if _, err := os.Stat(configFile); os.IsNotExist(err) {
 		defaultConfig := DefaultConfig()
 		viper.SetConfigFile(configFile)
+		viper.Set("base_url", defaultConfig.BaseUrl)
 		viper.Set("host", defaultConfig.Host)
+		viper.Set("path", defaultConfig.Path)
 		viper.Set("port", defaultConfig.Port)
 		viper.Set("tls", defaultConfig.Tls)
 		viper.Set("chat_enabled", defaultConfig.ChatEnabled)
@@ -112,7 +125,9 @@ func SaveConfig(config *Config, configName ...string) error {
 	configFile := filepath.Join(configHome, fileName)
 
 	viper.SetConfigFile(configFile)
+	viper.Set("base_url", config.BaseUrl)
 	viper.Set("host", config.Host)
+	viper.Set("path", config.Path)
 	viper.Set("port", config.Port)
 	viper.Set("tls", config.Tls)
 	viper.Set("chat_enabled", config.ChatEnabled)

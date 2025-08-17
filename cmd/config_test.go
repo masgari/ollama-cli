@@ -83,9 +83,23 @@ func TestConfigCommand(t *testing.T) {
 			args:    []string{},
 			wantErr: false,
 			checkOutput: func(output string) bool {
-				return strings.Contains(output, "Host") &&
+				return strings.Contains(output, "Base URL") &&
+					strings.Contains(output, "Host") &&
+					strings.Contains(output, "Path") &&
 					strings.Contains(output, "Port") &&
 					strings.Contains(output, "URL")
+			},
+		},
+		{
+			name:    "Set base URL flag",
+			args:    []string{"--base-url", "https://example.com:8080/ollama"},
+			wantErr: false,
+			checkOutput: func(output string) bool {
+				return strings.Contains(output, "Base URL: https://example.com:8080/ollama\n") &&
+					strings.Contains(output, "Host: localhost\n") &&
+					strings.Contains(output, "Path: \n") &&
+					strings.Contains(output, "Port: 11434\n") &&
+					strings.Contains(output, "TLS: false\n")
 			},
 		},
 		{
@@ -95,6 +109,19 @@ func TestConfigCommand(t *testing.T) {
 			checkOutput: func(output string) bool {
 				return strings.Contains(output, "example.com") &&
 					strings.Contains(output, "Host") &&
+					strings.Contains(output, "Path") &&
+					strings.Contains(output, "Port")
+
+			},
+		},
+		{
+			name:    "Set path flag",
+			args:    []string{"--path", "/test-api"},
+			wantErr: false,
+			checkOutput: func(output string) bool {
+				return strings.Contains(output, "/test-api") &&
+					strings.Contains(output, "Host") &&
+					strings.Contains(output, "Path") &&
 					strings.Contains(output, "Port")
 			},
 		},
@@ -105,17 +132,20 @@ func TestConfigCommand(t *testing.T) {
 			checkOutput: func(output string) bool {
 				return strings.Contains(output, "8080") &&
 					strings.Contains(output, "Host") &&
+					strings.Contains(output, "Path") &&
 					strings.Contains(output, "Port")
 			},
 		},
 		{
-			name:    "Set both host and port flags",
-			args:    []string{"--host", "test.com", "--port", "9090"},
+			name:    "Set host and path and port flags",
+			args:    []string{"--host", "test.com", "--path", "/test-api", "--port", "9090"},
 			wantErr: false,
 			checkOutput: func(output string) bool {
 				return strings.Contains(output, "test.com") &&
+					strings.Contains(output, "/test-api") &&
 					strings.Contains(output, "9090") &&
 					strings.Contains(output, "Host") &&
+					strings.Contains(output, "Path") &&
 					strings.Contains(output, "Port")
 			},
 		},
@@ -193,6 +223,15 @@ func TestConfigSetCommand(t *testing.T) {
 			checkOutput: func(output string) bool {
 				return strings.Contains(output, "example.com") &&
 					strings.Contains(output, "host")
+			},
+		},
+		{
+			name:    "Set path",
+			args:    []string{"path", "/test-api"},
+			wantErr: false,
+			checkOutput: func(output string) bool {
+				return strings.Contains(output, "/test-api") &&
+					strings.Contains(output, "path")
 			},
 		},
 		{
@@ -276,6 +315,7 @@ func TestConfigGetCommand(t *testing.T) {
 	origCfg := config.Current
 	config.Current = &config.Config{
 		Host: "test.example.com",
+		Path: "/test-api",
 		Port: 5555,
 	}
 	defer func() {
@@ -309,6 +349,14 @@ func TestConfigGetCommand(t *testing.T) {
 			wantErr: false,
 			checkOutput: func(output string) bool {
 				return strings.Contains(output, "test.example.com")
+			},
+		},
+		{
+			name:    "Get path",
+			args:    []string{"path"},
+			wantErr: false,
+			checkOutput: func(output string) bool {
+				return strings.Contains(output, "/test-api")
 			},
 		},
 		{
@@ -405,15 +453,16 @@ func TestConfigListCommand(t *testing.T) {
 	testConfigs := []struct {
 		name string
 		host string
+		path string
 		port int
 	}{
-		{"default", "localhost", 11434},
-		{"test1", "test1.example.com", 1111},
-		{"test2", "test2.example.com", 2222},
+		{"default", "localhost", "", 11434},
+		{"test1", "test1.example.com", "/path1", 1111},
+		{"test2", "test2.example.com", "/path2", 2222},
 	}
 
 	for _, tc := range testConfigs {
-		cfg := &config.Config{Host: tc.host, Port: tc.port}
+		cfg := &config.Config{Host: tc.host, Path: tc.path, Port: tc.port}
 		if err := config.SaveConfig(cfg, tc.name); err != nil {
 			t.Fatalf("Failed to save test config %s: %v", tc.name, err)
 		}
@@ -477,6 +526,16 @@ func TestConfigCommandFlags(t *testing.T) {
 	// Test that all flags are properly defined
 	cmd := configCmd
 
+	// Check base URL flag
+	baseUrlFlag := cmd.Flag("base-url")
+	if baseUrlFlag == nil {
+		t.Error("base URL flag not found")
+	} else {
+		if baseUrlFlag.DefValue != "" {
+			t.Errorf("base url flag default value = %q, want %q", baseUrlFlag.DefValue, "")
+		}
+	}
+
 	// Check host flag
 	hostFlag := cmd.Flag("host")
 	if hostFlag == nil {
@@ -484,6 +543,16 @@ func TestConfigCommandFlags(t *testing.T) {
 	} else {
 		if hostFlag.DefValue != "" {
 			t.Errorf("host flag default value = %q, want %q", hostFlag.DefValue, "")
+		}
+	}
+
+	// Check path flag
+	pathFlag := cmd.Flag("path")
+	if pathFlag == nil {
+		t.Error("path flag not found")
+	} else {
+		if pathFlag.DefValue != "" {
+			t.Errorf("path flag default value = %q, want %q", pathFlag.DefValue, "")
 		}
 	}
 
