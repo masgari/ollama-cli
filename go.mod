@@ -5,7 +5,7 @@ go 1.24.1
 require (
 	github.com/fatih/color v1.18.0
 	github.com/hashicorp/go-version v1.8.0
-	github.com/ollama/ollama v0.13.3
+	github.com/ollama/ollama v0.13.5
 	github.com/spf13/cobra v1.10.2
 	github.com/spf13/viper v1.21.0
 	github.com/stretchr/testify v1.11.1
