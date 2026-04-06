@@ -62,6 +62,13 @@ func TestAvailableCommand(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			// availableCmd binds package-level vars; Cobra does not reset them between
+			// invocations when a flag is omitted, so restore defaults before each run.
+			filterName = ""
+			timeout = 30
+			limit = 10
+			maxSize = 0
+
 			// Create a new command for testing
 			cmd := &cobra.Command{Use: "test"}
 			cmd.AddCommand(availableCmd)

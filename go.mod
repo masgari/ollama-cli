@@ -1,11 +1,11 @@
 module github.com/masgari/ollama-cli
 
-go 1.24.1
+go 1.26.1
 
 require (
-	github.com/fatih/color v1.18.0
-	github.com/hashicorp/go-version v1.8.0
-	github.com/ollama/ollama v0.14.2
+	github.com/fatih/color v1.19.0
+	github.com/hashicorp/go-version v1.9.0
+	github.com/ollama/ollama v0.20.2
 	github.com/spf13/cobra v1.10.2
 	github.com/spf13/viper v1.21.0
 	github.com/stretchr/testify v1.11.1
@@ -33,7 +33,7 @@ require (
 	github.com/wk8/go-ordered-map/v2 v2.1.8 // indirect
 	go.yaml.in/yaml/v3 v3.0.4 // indirect
 	golang.org/x/crypto v0.47.0 // indirect
-	golang.org/x/sys v0.40.0 // indirect
+	golang.org/x/sys v0.42.0 // indirect
 	golang.org/x/text v0.33.0 // indirect
 	gopkg.in/check.v1 v1.0.0-20201130134442-10cb98267c6c // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
