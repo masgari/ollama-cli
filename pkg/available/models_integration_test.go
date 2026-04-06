@@ -117,20 +117,20 @@ func TestIntegrationFetchModelsFromOllama(t *testing.T) {
 		t.Logf("Could not find a model with all fields populated")
 	}
 
-	// Verify that we can filter models by name
-	// Pick a common model name prefix that should exist
-	commonPrefix := "llama"
-	filteredModels := FilterByName(models, commonPrefix)
+	// Verify that we can filter models by name using a token we know exists
+	// in this response (ollama.com's default listing changes over time, so avoid
+	// hardcoding family names like "llama" that may not appear on the first page).
+	filterToken := models[0].Name
+	filteredModels := FilterByName(models, filterToken)
 
-	// There should be at least one model with this prefix
 	if len(filteredModels) == 0 {
-		t.Errorf("FilterByName() with prefix '%s' returned 0 models, expected at least one", commonPrefix)
+		t.Errorf("FilterByName() with %q returned 0 models, expected at least one", filterToken)
 	}
 
-	// All filtered models should contain the prefix in their name
+	want := strings.ToLower(filterToken)
 	for i, model := range filteredModels {
-		if !strings.Contains(strings.ToLower(model.Name), commonPrefix) {
-			t.Errorf("filteredModels[%d].Name = %s, does not contain prefix '%s'", i, model.Name, commonPrefix)
+		if !strings.Contains(strings.ToLower(model.Name), want) {
+			t.Errorf("filteredModels[%d].Name = %s, does not contain %q", i, model.Name, filterToken)
 		}
 	}
 

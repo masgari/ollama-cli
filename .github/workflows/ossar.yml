@@ -40,13 +40,13 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           fetch-depth: 0
 
       # Run the Microsoft Security DevOps (MSDO) action
       - name: Run Microsoft Security DevOps Scan
-        uses: microsoft/security-devops-action@v1
+        uses: microsoft/security-devops-action@v1.12.0
         id: msdo
         with:
           # Specify only Linux-compatible tools
@@ -56,13 +56,13 @@ jobs:
 
       # Upload alerts to Security tab
       - name: Upload SARIF to GitHub
-        uses: github/codeql-action/upload-sarif@v3
+        uses: github/codeql-action/upload-sarif@v4
         if: success() || failure()
         with:
           sarif_file: ${{ steps.msdo.outputs.sarifFile }}
 
       - name: Dependency Review
-        uses: actions/dependency-review-action@v3
+        uses: actions/dependency-review-action@v4
         if: github.event_name == 'pull_request'
         with:
           fail-on-severity: high
@@ -70,7 +70,7 @@ jobs:
       # Always upload scan results as an artifact for review
       - name: Upload Scan Results
         if: always() && steps.msdo.outputs.sarifFile != ''
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: security-scan-results
           path: ${{ steps.msdo.outputs.sarifFile }}
