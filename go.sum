@@ -34,8 +34,8 @@ github.com/mattn/go-colorable v0.1.14 h1:9A9LHSqF/7dyVVX6g0U9cwm9pG3kP9gSzcuIPHP
 github.com/mattn/go-colorable v0.1.14/go.mod h1:6LmQG8QLFO4G5z1gPvYEzlUgJ2wF+stgPZH1UqBm1s8=
 github.com/mattn/go-isatty v0.0.20 h1:xfD0iDuEKnDkl03q4limB+vH+GxLEtL/jb4xVJSWWEY=
 github.com/mattn/go-isatty v0.0.20/go.mod h1:W+V8PltTTMOvKvAeJH7IuucS94S2C6jfK/D7dTCTo3Y=
-github.com/ollama/ollama v0.21.2 h1:CDChYRau12aj6XFt/N0xOKudrV/1zhUad7cKlZetDY0=
-github.com/ollama/ollama v0.21.2/go.mod h1:274niu48upWz/M7vL53i1WFe+TJRRw5oo4GiacbIYrA=
+github.com/ollama/ollama v0.23.0 h1:13V15B9Pkwl+WAaaU90NW6vik54dYgPhVrdjtw+dqck=
+github.com/ollama/ollama v0.23.0/go.mod h1:274niu48upWz/M7vL53i1WFe+TJRRw5oo4GiacbIYrA=
 github.com/pelletier/go-toml/v2 v2.2.4 h1:mye9XuhQ6gvn5h28+VilKrrPoQVanw5PMw/TB0t5Ec4=
 github.com/pelletier/go-toml/v2 v2.2.4/go.mod h1:2gIqNv+qfxSVS7cM2xJQKtLSTLUE9V8t9Stt+h56mCY=
 github.com/pmezard/go-difflib v1.0.1-0.20181226105442-5d4384ee4fb2 h1:Jamvg5psRIccs7FGNTlIRMkT8wgtp5eCXdBlqhYGL6U=
