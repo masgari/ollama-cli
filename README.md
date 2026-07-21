@@ -53,7 +53,7 @@ Available Commands:
   version     Display the version of the CLI tool
 
 Flags:
-      --base-url string      Full Ollama server URL (e.g. https://example.com:11434/api)
+      --base-url string      Full Ollama server URL (e.g. https://example.com:11434/)
       --config string        config file (default is $HOME/.ollama-cli/config.yaml)
   -c, --config-name string   config name to use (e.g. 'pc' for $HOME/.ollama-cli/pc.yaml)
   -h, --help                 help for ollama-cli
