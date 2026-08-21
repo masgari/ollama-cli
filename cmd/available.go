@@ -24,7 +24,7 @@ var availableCmd = &cobra.Command{
 	Use:     "available",
 	Aliases: []string{"avail"},
 	Short:   "List models available on ollama.com",
-	Long:    `List all models that are available on ollama.com/search.`,
+	Long:    `List all models that are available on ollama.com/search (newest first).`,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		// Get the output format from flags
 		outputFormat, _ := cmd.Flags().GetString("output")
@@ -40,7 +40,7 @@ var availableCmd = &cobra.Command{
 		}
 
 		// Create ModelFetcher with the client
-		fetcher := available.NewModelFetcher(client, "https://ollama.com/search")
+		fetcher := available.NewModelFetcher(client, available.DefaultSearchURL)
 
 		// Fetch available models using the fetcher
 		models, err := fetcher.FetchModels(ctx)

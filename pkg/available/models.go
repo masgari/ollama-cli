@@ -5,11 +5,18 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"net/url"
 	"regexp"
 	"sort"
 	"strconv"
 	"strings"
 	"time"
+)
+
+const (
+	// DefaultSearchURL lists models on ollama.com sorted by newest.
+	DefaultSearchURL = "https://ollama.com/search?o=newest"
+	maxSearchPages   = 50
 )
 
 // Model represents a model available on ollama.com
@@ -37,101 +44,148 @@ func NewModelFetcher(client *http.Client, url string) *ModelFetcher {
 	}
 }
 
-// FetchModels fetches the list of available models from the specified URL
+var (
+	modelBlockRegex = regexp.MustCompile(`(?s)<li\s+class="flex items-baseline[^"]*".*?</li>`)
+	nameRegex       = regexp.MustCompile(`href="/library/([^"]+)"`)
+	descRegex       = regexp.MustCompile(`<p class="max-w-lg break-words[^>]*>(.*?)</p>`)
+	sizeRegex       = regexp.MustCompile(`<span[^>]*>\s*(\d+(?:\.\d+)?[bB])\s*</span>`)
+	pullsRegex      = regexp.MustCompile(`(?s)<span[^>]*>\s*([^<]+?)\s*</span>\s*<span[^>]*>\s*(?:&nbsp;)?\s*Pulls\s*</span>`)
+	tagsRegex       = regexp.MustCompile(`(?s)<span[^>]*>\s*([^<]+?)\s*</span>\s*<span[^>]*>\s*(?:&nbsp;)?\s*Tags?\s*</span>`)
+	updatedRegex    = regexp.MustCompile(`(?s)Updated(?:&nbsp;|\s)*</span>\s*<span[^>]*>\s*([^<]+?)\s*</span>`)
+	updatedTitleRe  = regexp.MustCompile(`title="([^"]+)"[^>]*>\s*(?:<svg[\s\S]*?</svg>\s*)?(?:<span[^>]*>\s*Updated(?:&nbsp;|\s)*</span>\s*)?<span[^>]*>\s*([^<]+?)\s*</span>`)
+	nextPageRegex   = regexp.MustCompile(`hx-get="/search\?page=(\d+)"`)
+)
+
+// FetchModels fetches the list of available models from the specified URL,
+// following HTMX infinite-scroll pagination when present.
 func (mf *ModelFetcher) FetchModels(ctx context.Context) ([]Model, error) {
-	// Create request
-	req, err := http.NewRequestWithContext(ctx, "GET", mf.url, nil)
+	baseURL, err := url.Parse(mf.url)
 	if err != nil {
-		return nil, fmt.Errorf("failed to create request: %w", err)
+		return nil, fmt.Errorf("invalid fetch URL: %w", err)
 	}
 
-	// Set headers
-	req.Header.Set("User-Agent", "ollama-cli")
+	var allModels []Model
+	seen := make(map[string]struct{})
+	pageURL := mf.url
+	htmxRequest := false
 
-	// Send request
+	for page := 0; page < maxSearchPages; page++ {
+		body, err := mf.fetchPage(ctx, pageURL, htmxRequest)
+		if err != nil {
+			return nil, err
+		}
+
+		models, err := parseModels(body)
+		if err != nil {
+			// First page with no models is a hard error; later empty pages end pagination.
+			if page == 0 {
+				return nil, fmt.Errorf("failed to parse response: %w", err)
+			}
+			break
+		}
+
+		for _, model := range models {
+			if _, ok := seen[model.Name]; ok {
+				continue
+			}
+			seen[model.Name] = struct{}{}
+			allModels = append(allModels, model)
+		}
+
+		nextPage := findNextPage(body)
+		if nextPage == 0 {
+			break
+		}
+
+		nextURL := *baseURL
+		q := nextURL.Query()
+		q.Set("page", strconv.Itoa(nextPage))
+		nextURL.RawQuery = q.Encode()
+		pageURL = nextURL.String()
+		htmxRequest = true
+	}
+
+	if len(allModels) == 0 {
+		return nil, fmt.Errorf("no models found in response")
+	}
+
+	sortModelsByUpdateTime(allModels)
+	return allModels, nil
+}
+
+func (mf *ModelFetcher) fetchPage(ctx context.Context, pageURL string, htmxRequest bool) (string, error) {
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, pageURL, nil)
+	if err != nil {
+		return "", fmt.Errorf("failed to create request: %w", err)
+	}
+
+	req.Header.Set("User-Agent", "ollama-cli")
+	if htmxRequest {
+		req.Header.Set("HX-Request", "true")
+	}
+
 	resp, err := mf.client.Do(req)
 	if err != nil {
-		return nil, fmt.Errorf("failed to send request: %w", err)
+		return "", fmt.Errorf("failed to send request: %w", err)
 	}
 	defer resp.Body.Close()
 
-	// Check response status
 	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("unexpected status code: %d", resp.StatusCode)
+		return "", fmt.Errorf("unexpected status code: %d", resp.StatusCode)
 	}
 
-	// Read response body
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
-		return nil, fmt.Errorf("failed to read response body: %w", err)
+		return "", fmt.Errorf("failed to read response body: %w", err)
 	}
 
-	// Parse response
-	models, err := parseModels(string(body))
-	if err != nil {
-		return nil, fmt.Errorf("failed to parse response: %w", err)
-	}
-
-	return models, nil
+	return string(body), nil
 }
 
-// Update the existing FetchModels function to use ModelFetcher
+func findNextPage(html string) int {
+	match := nextPageRegex.FindStringSubmatch(html)
+	if len(match) < 2 {
+		return 0
+	}
+	page, err := strconv.Atoi(match[1])
+	if err != nil {
+		return 0
+	}
+	return page
+}
+
+// FetchModels fetches models from ollama.com using the default search URL.
 func FetchModels(ctx context.Context, timeout int) ([]Model, error) {
 	client := &http.Client{
 		Timeout: time.Duration(timeout) * time.Second,
 	}
-	fetcher := NewModelFetcher(client, "https://ollama.com/search")
+	fetcher := NewModelFetcher(client, DefaultSearchURL)
 	return fetcher.FetchModels(ctx)
 }
 
 // parseModels parses the HTML response from ollama.com/search
 func parseModels(html string) ([]Model, error) {
-	var models []Model
-
-	// Regular expression to find model blocks - using a non-greedy pattern and making it work with newlines
-	modelBlockRegex := regexp.MustCompile(`(?s)<li x-test-model[^>]*>.*?</li>`)
 	modelBlocks := modelBlockRegex.FindAllString(html, -1)
-
 	if len(modelBlocks) == 0 {
 		return nil, fmt.Errorf("no models found in response")
 	}
 
-	// Regular expressions to extract model information within each block
-	titleRegex := regexp.MustCompile(`<span x-test-search-response-title>(.*?)</span>`)
-	descRegex := regexp.MustCompile(`<p class="max-w-lg break-words[^>]*>(.*?)</p>`)
-	sizeRegex := regexp.MustCompile(`<span[^>]*x-test-size[^>]*>(\d+(?:\.\d+)?[bB])</span>`)
-	pullsRegex := regexp.MustCompile(`<span x-test-pull-count[^>]*>([^<]+)</span>`)
-	tagsRegex := regexp.MustCompile(`<span x-test-tag-count[^>]*>([^<]+)</span>`)
-	updatedRegex := regexp.MustCompile(`<span x-test-updated[^>]*>([^<]+)</span>`)
-
+	var models []Model
 	for _, block := range modelBlocks {
-		// Extract model information from the block
-		titleMatch := titleRegex.FindStringSubmatch(block)
-		descMatch := descRegex.FindStringSubmatch(block)
-		sizeMatches := sizeRegex.FindAllStringSubmatch(block, -1)
-		pullsMatch := pullsRegex.FindStringSubmatch(block)
-		tagsMatch := tagsRegex.FindStringSubmatch(block)
-		updatedMatch := updatedRegex.FindStringSubmatch(block)
-
-		if len(titleMatch) < 2 {
-			continue // Skip if no title found
+		nameMatch := nameRegex.FindStringSubmatch(block)
+		if len(nameMatch) < 2 {
+			continue // Skip HTMX sentinels and other non-model list items
 		}
 
-		name := strings.TrimSpace(titleMatch[1])
-		name = formatModelName(name)
+		name := formatModelName(strings.TrimSpace(nameMatch[1]))
+		model := Model{Name: name}
 
-		// Create model with extracted information
-		model := Model{
-			Name: name,
-		}
-
-		if len(descMatch) >= 2 {
+		if descMatch := descRegex.FindStringSubmatch(block); len(descMatch) >= 2 {
 			model.Description = strings.TrimSpace(descMatch[1])
 		}
 
-		// Collect all sizes for this model
 		var sizes []string
-		for _, sizeMatch := range sizeMatches {
+		for _, sizeMatch := range sizeRegex.FindAllStringSubmatch(block, -1) {
 			if len(sizeMatch) >= 2 {
 				size := strings.TrimSpace(sizeMatch[1])
 				if size != "" {
@@ -139,31 +193,36 @@ func parseModels(html string) ([]Model, error) {
 				}
 			}
 		}
-		// Sort sizes by their numeric value
 		sort.Slice(sizes, func(i, j int) bool {
-			// Extract numeric values from size strings
-			numI := extractNumericValue(sizes[i])
-			numJ := extractNumericValue(sizes[j])
-			return numI < numJ
+			return extractNumericValue(sizes[i]) < extractNumericValue(sizes[j])
 		})
 		model.Size = strings.Join(sizes, ", ")
 
-		if len(pullsMatch) >= 2 {
+		if pullsMatch := pullsRegex.FindStringSubmatch(block); len(pullsMatch) >= 2 {
 			model.Pulls = strings.TrimSpace(pullsMatch[1])
 		}
 
-		if len(tagsMatch) >= 2 {
+		if tagsMatch := tagsRegex.FindStringSubmatch(block); len(tagsMatch) >= 2 {
 			model.Tags = strings.TrimSpace(tagsMatch[1])
 		}
 
-		if len(updatedMatch) >= 2 {
+		if updatedMatch := updatedRegex.FindStringSubmatch(block); len(updatedMatch) >= 2 {
 			model.Updated = strings.TrimSpace(updatedMatch[1])
+		} else if titleMatch := updatedTitleRe.FindStringSubmatch(block); len(titleMatch) >= 3 {
+			// Prefer relative display text; fall back to absolute title if needed.
+			model.Updated = strings.TrimSpace(titleMatch[2])
+			if model.Updated == "" {
+				model.Updated = strings.TrimSpace(titleMatch[1])
+			}
 		}
 
 		models = append(models, model)
 	}
 
-	// Sort models by update time before returning
+	if len(models) == 0 {
+		return nil, fmt.Errorf("no models found in response")
+	}
+
 	sortModelsByUpdateTime(models)
 	return models, nil
 }
@@ -180,71 +239,66 @@ func sortModelsByUpdateTime(models []Model) {
 // parseUpdateTime parses the update time string into a time.Time
 func parseUpdateTime(updated string) time.Time {
 	if updated == "" {
-		return time.Time{} // Return zero time for empty strings
+		return time.Time{}
 	}
 
-	// Common time formats used in the update field
 	formats := []string{
-		"2006-01-02",                // YYYY-MM-DD
-		"Jan 2, 2006",               // MMM D, YYYY
-		"January 2, 2006",           // MMMM D, YYYY
-		"2 Jan 2006",                // D MMM YYYY
-		"2006-01-02 15:04:05 -0700", // Full timestamp with timezone
-		"2006-01-02T15:04:05-07:00", // ISO format
+		"2006-01-02",
+		"Jan 2, 2006",
+		"January 2, 2006",
+		"2 Jan 2006",
+		"Jan 2, 2006 3:04 PM MST",
+		"2006-01-02 15:04:05 -0700",
+		"2006-01-02T15:04:05-07:00",
 	}
 
-	// Try to parse with each format
 	for _, format := range formats {
 		if t, err := time.Parse(format, updated); err == nil {
 			return t
 		}
 	}
 
-	// If we can't parse the exact date, try to parse relative times
 	lower := strings.ToLower(updated)
-	if strings.HasSuffix(lower, " ago") {
-		duration := strings.TrimSuffix(lower, " ago")
-		now := time.Now()
-
-		// Parse different duration formats
-		switch {
-		case strings.HasSuffix(duration, " minutes"):
-			if mins, err := strconv.Atoi(strings.TrimSuffix(duration, " minutes")); err == nil {
-				return now.Add(-time.Duration(mins) * time.Minute)
-			}
-		case strings.HasSuffix(duration, " hours"):
-			if hours, err := strconv.Atoi(strings.TrimSuffix(duration, " hours")); err == nil {
-				return now.Add(-time.Duration(hours) * time.Hour)
-			}
-		case strings.HasSuffix(duration, " days"):
-			if days, err := strconv.Atoi(strings.TrimSuffix(duration, " days")); err == nil {
-				return now.AddDate(0, 0, -days)
-			}
-		case strings.HasSuffix(duration, " weeks"):
-			if weeks, err := strconv.Atoi(strings.TrimSuffix(duration, " weeks")); err == nil {
-				return now.AddDate(0, 0, -weeks*7)
-			}
-		case strings.HasSuffix(duration, " months"):
-			if months, err := strconv.Atoi(strings.TrimSuffix(duration, " months")); err == nil {
-				return now.AddDate(0, -months, 0)
-			}
-		case strings.HasSuffix(duration, " years"):
-			if years, err := strconv.Atoi(strings.TrimSuffix(duration, " years")); err == nil {
-				return now.AddDate(-years, 0, 0)
-			}
-		}
-	}
-	// yesterday case
 	if strings.Contains(lower, "yesterday") {
 		return time.Now().AddDate(0, 0, -1)
 	}
 
-	return time.Time{} // Return zero time if we can't parse the format
+	if strings.HasSuffix(lower, " ago") {
+		duration := strings.TrimSpace(strings.TrimSuffix(lower, " ago"))
+		now := time.Now()
+
+		unitParsers := []struct {
+			singular string
+			plural   string
+			apply    func(int) time.Time
+		}{
+			{"minute", "minutes", func(n int) time.Time { return now.Add(-time.Duration(n) * time.Minute) }},
+			{"hour", "hours", func(n int) time.Time { return now.Add(-time.Duration(n) * time.Hour) }},
+			{"day", "days", func(n int) time.Time { return now.AddDate(0, 0, -n) }},
+			{"week", "weeks", func(n int) time.Time { return now.AddDate(0, 0, -n*7) }},
+			{"month", "months", func(n int) time.Time { return now.AddDate(0, -n, 0) }},
+			{"year", "years", func(n int) time.Time { return now.AddDate(-n, 0, 0) }},
+		}
+
+		for _, unit := range unitParsers {
+			if strings.HasSuffix(duration, " "+unit.plural) {
+				if n, err := strconv.Atoi(strings.TrimSpace(strings.TrimSuffix(duration, " "+unit.plural))); err == nil {
+					return unit.apply(n)
+				}
+			}
+			if strings.HasSuffix(duration, " "+unit.singular) {
+				if n, err := strconv.Atoi(strings.TrimSpace(strings.TrimSuffix(duration, " "+unit.singular))); err == nil {
+					return unit.apply(n)
+				}
+			}
+		}
+	}
+
+	return time.Time{}
 }
 
 // formatModelName formats the model name to match the format used by Ollama
 func formatModelName(name string) string {
-	// Remove "Model:" prefix if present
 	name = strings.TrimPrefix(name, "Model:")
 	return strings.TrimSpace(name)
 }
@@ -274,10 +328,7 @@ func FilterBySize(models []Model, maxSize float64) []Model {
 
 	filteredModels := []Model{}
 	for _, model := range models {
-		// Split the size string which may contain multiple sizes
 		sizes := strings.Split(model.Size, ", ")
-
-		// Check if any size is less than or equal to maxSize
 		for _, sizeStr := range sizes {
 			size := extractNumericValue(sizeStr)
 			if size <= maxSize {
@@ -291,9 +342,7 @@ func FilterBySize(models []Model, maxSize float64) []Model {
 
 // extractNumericValue extracts the numeric value from a size string (e.g., "1.5b" -> 1.5)
 func extractNumericValue(size string) float64 {
-	// Remove the 'b' or 'B' suffix
 	size = strings.TrimSuffix(strings.TrimSuffix(size, "b"), "B")
-	// Convert to float
 	val, _ := strconv.ParseFloat(size, 64)
 	return val
 }
