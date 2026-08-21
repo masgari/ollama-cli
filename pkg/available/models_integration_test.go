@@ -17,7 +17,7 @@ import (
 func TestIntegrationFetchModelsFromOllama(t *testing.T) {
 	// Create a real HTTP client with a reasonable timeout
 	client := &http.Client{Timeout: 10 * time.Second}
-	fetcher := NewModelFetcher(client, "https://ollama.com/search")
+	fetcher := NewModelFetcher(client, DefaultSearchURL)
 
 	// Fetch models from the actual ollama.com website
 	ctx := context.Background()

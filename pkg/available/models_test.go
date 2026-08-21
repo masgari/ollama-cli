@@ -6,19 +6,60 @@ import (
 	"net/http/httptest"
 	"reflect"
 	"sort"
+	"strings"
 	"testing"
 	"time"
 )
 
+func sampleModelHTML(name, desc, size, pulls, tags, updated string) string {
+	sizeSpans := ""
+	for _, s := range strings.Split(size, ", ") {
+		if s == "" {
+			continue
+		}
+		sizeSpans += `<span class="inline-flex my-1 items-center rounded-md bg-[#ddf4ff] px-2 py-[2px] text-xs font-medium text-blue-600 sm:text-[13px]">` + s + `</span>`
+	}
+
+	return `
+<li class="flex items-baseline border-b border-neutral-200 py-6">
+  <a href="/library/` + name + `" class="group w-full">
+    <div class="flex flex-col mb-1" title="` + name + `">
+      <h2 class="truncate text-xl font-medium">
+        <span>` + name + `</span>
+      </h2>
+      <p class="max-w-lg break-words text-neutral-800 text-md">` + desc + `</p>
+    </div>
+    <div class="flex flex-col">
+      <div class="flex flex-wrap space-x-2">
+        <span class="inline-flex my-1 items-center rounded-md bg-indigo-50 px-2 py-[2px] text-xs font-medium text-indigo-600 sm:text-[13px]">vision</span>
+        ` + sizeSpans + `
+      </div>
+      <p class="my-1 flex space-x-5 text-[13px] font-medium text-neutral-500">
+        <span class="flex items-center">
+          <span>` + pulls + `</span>
+          <span class="hidden sm:flex">&nbsp;Pulls</span>
+        </span>
+        <span class="flex items-center">
+          <span>` + tags + `</span>
+          <span class="hidden sm:flex">&nbsp;Tags</span>
+        </span>
+        <span class="flex items-center" title="Aug 19, 2026 6:06 PM UTC">
+          <span class="hidden sm:flex">Updated&nbsp;</span>
+          <span>` + updated + `</span>
+        </span>
+      </p>
+    </div>
+  </a>
+</li>`
+}
+
 func TestFilterByName(t *testing.T) {
-	// Test data
 	models := []Model{
 		{Name: "llama2", Description: "Llama 2 model"},
 		{Name: "mistral", Description: "Mistral model"},
 		{Name: "llama3", Description: "Llama 3 model"},
 	}
 
-	// Test cases
 	tests := []struct {
 		name       string
 		filterName string
@@ -51,7 +92,6 @@ func TestFilterByName(t *testing.T) {
 		},
 	}
 
-	// Run tests
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			got := FilterByName(models, tt.filterName)
@@ -63,37 +103,19 @@ func TestFilterByName(t *testing.T) {
 }
 
 func TestParseModels(t *testing.T) {
-	// Sample HTML response
-	html := `
-	<ul>
-		<li x-test-model>
-			<span x-test-search-response-title>llama2</span>
-			<p class="max-w-lg break-words">Llama 2 model</p>
-			<span x-test-size>7.0B</span>
-			<span x-test-pull-count>1M</span>
-			<span x-test-tag-count>10</span>
-			<span x-test-updated>1 hour ago</span>
-		</li>
-		<li x-test-model>
-			<span x-test-search-response-title>gemma2</span>
-			<p class="max-w-lg break-words">Gemma 2 model</p>
-			<span x-test-size>4.0B</span>
-			<span x-test-pull-count>500K</span>
-			<span x-test-tag-count>5</span>
-			<span x-test-updated>yesterday</span>
-		</li>
-		<li x-test-model>
-			<span x-test-search-response-title>mistral</span>
-			<p class="max-w-lg break-words">Mistral model</p>
-			<span x-test-size>7.0B</span>
-			<span x-test-pull-count>500K</span>
-			<span x-test-tag-count>5</span>
-			<span x-test-updated>2 days ago</span>
-		</li>
-	</ul>
-	`
+	html := `<ul role="list" class="grid grid-cols-1">` +
+		sampleModelHTML("llama2", "Llama 2 model", "7.0B", "1M", "10", "1 hour ago") +
+		sampleModelHTML("gemma2", "Gemma 2 model", "4.0B", "500K", "5", "yesterday") +
+		sampleModelHTML("mistral", "Mistral model", "7.0B", "500K", "5", "2 days ago") +
+		`
+<li
+  hx-get="/search?page=2"
+  hx-trigger="revealed"
+  hx-swap="outerHTML"
+  hx-target="this"
+></li>
+</ul>`
 
-	// Expected models
 	expected := []Model{
 		{
 			Name:        "llama2",
@@ -121,13 +143,11 @@ func TestParseModels(t *testing.T) {
 		},
 	}
 
-	// Parse models
 	models, err := parseModels(html)
 	if err != nil {
 		t.Fatalf("parseModels() error = %v", err)
 	}
 
-	// Sort both slices by name for consistent comparison
 	sort.Slice(models, func(i, j int) bool {
 		return models[i].Name < models[j].Name
 	})
@@ -135,7 +155,6 @@ func TestParseModels(t *testing.T) {
 		return expected[i].Name < expected[j].Name
 	})
 
-	// Compare results
 	if len(models) != len(expected) {
 		t.Errorf("parseModels() returned %d models, want %d", len(models), len(expected))
 	}
@@ -162,59 +181,51 @@ func TestParseModels(t *testing.T) {
 	}
 }
 
+func TestParseModelsMultipleSizes(t *testing.T) {
+	html := `<ul>` + sampleModelHTML("ornith", "Self-improving model", "9b, 35b", "12K", "3", "1 week ago") + `</ul>`
+
+	models, err := parseModels(html)
+	if err != nil {
+		t.Fatalf("parseModels() error = %v", err)
+	}
+	if len(models) != 1 {
+		t.Fatalf("parseModels() returned %d models, want 1", len(models))
+	}
+	if models[0].Size != "9b, 35b" {
+		t.Errorf("Size = %q, want %q", models[0].Size, "9b, 35b")
+	}
+	if models[0].Updated != "1 week ago" {
+		t.Errorf("Updated = %q, want %q", models[0].Updated, "1 week ago")
+	}
+}
+
 func TestFetchModels(t *testing.T) {
-	// Create a test server
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		// Check request method and path
-		if r.Method != "GET" {
+		if r.Method != http.MethodGet {
 			t.Errorf("Expected GET request, got %s", r.Method)
 		}
-		// We're not checking the path anymore since we'll use the full URL
-		// if r.URL.Path != "/search" {
-		// 	t.Errorf("Expected /search path, got %s", r.URL.Path)
-		// }
-
-		// Check User-Agent header
 		if r.Header.Get("User-Agent") != "ollama-cli" {
 			t.Errorf("Expected User-Agent: ollama-cli, got %s", r.Header.Get("User-Agent"))
 		}
 
-		// Return a sample response
 		w.WriteHeader(http.StatusOK)
-		w.Write([]byte(`
-		<ul>
-			<li x-test-model>
-				<span x-test-search-response-title>llama2</span>
-				<p class="max-w-lg break-words">Llama 2 model</p>
-				<span x-test-size>7.0B</span>
-				<span x-test-pull-count>1M</span>
-				<span x-test-tag-count>10</span>
-				<span x-test-updated>1 day ago</span>
-			</li>
-		</ul>
-		`))
+		w.Write([]byte(`<ul>` + sampleModelHTML("llama2", "Llama 2 model", "7.0B", "1M", "10", "1 day ago") + `</ul>`))
 	}))
 	defer server.Close()
 
-	// Create a custom ModelFetcher that uses the test server
 	client := &http.Client{Timeout: 5 * time.Second}
 	fetcher := NewModelFetcher(client, server.URL)
 
-	// Fetch models using the custom fetcher
 	ctx := context.Background()
 	models, err := fetcher.FetchModels(ctx)
-
-	// Check for errors
 	if err != nil {
 		t.Fatalf("FetchModels() error = %v", err)
 	}
 
-	// Check the number of models returned
 	if len(models) != 1 {
 		t.Errorf("FetchModels() returned %d models, want 1", len(models))
 	}
 
-	// Check the model details
 	model := models[0]
 	if model.Name != "llama2" {
 		t.Errorf("model.Name = %s, want llama2", model.Name)
@@ -236,8 +247,90 @@ func TestFetchModels(t *testing.T) {
 	}
 }
 
+func TestFetchModelsPagination(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Header.Get("User-Agent") != "ollama-cli" {
+			t.Errorf("Expected User-Agent: ollama-cli, got %s", r.Header.Get("User-Agent"))
+		}
+
+		page := r.URL.Query().Get("page")
+		switch page {
+		case "", "1":
+			if r.Header.Get("HX-Request") != "" {
+				t.Errorf("page 1 should not send HX-Request, got %q", r.Header.Get("HX-Request"))
+			}
+			w.WriteHeader(http.StatusOK)
+			w.Write([]byte(`<!doctype html><ul>` +
+				sampleModelHTML("model-a", "First page", "7b", "1M", "2", "1 hour ago") +
+				`<li hx-get="/search?page=2" hx-trigger="revealed" hx-swap="outerHTML" hx-target="this"></li></ul>`))
+		case "2":
+			if r.Header.Get("HX-Request") != "true" {
+				t.Errorf("page 2 expected HX-Request: true, got %q", r.Header.Get("HX-Request"))
+			}
+			w.WriteHeader(http.StatusOK)
+			w.Write([]byte(sampleModelHTML("model-b", "Second page", "3b", "500K", "1", "2 days ago") +
+				`<li hx-get="/search?page=3" hx-trigger="revealed"></li>`))
+		case "3":
+			if r.Header.Get("HX-Request") != "true" {
+				t.Errorf("page 3 expected HX-Request: true, got %q", r.Header.Get("HX-Request"))
+			}
+			w.WriteHeader(http.StatusOK)
+			w.Write([]byte(sampleModelHTML("model-c", "Third page", "1b", "100K", "1", "1 week ago")))
+		default:
+			t.Errorf("unexpected page %q", page)
+			w.WriteHeader(http.StatusNotFound)
+		}
+	}))
+	defer server.Close()
+
+	client := &http.Client{Timeout: 5 * time.Second}
+	fetcher := NewModelFetcher(client, server.URL+"?o=newest")
+
+	models, err := fetcher.FetchModels(context.Background())
+	if err != nil {
+		t.Fatalf("FetchModels() error = %v", err)
+	}
+
+	if len(models) != 3 {
+		t.Fatalf("FetchModels() returned %d models, want 3: %+v", len(models), models)
+	}
+
+	names := map[string]bool{}
+	for _, m := range models {
+		names[m.Name] = true
+	}
+	for _, want := range []string{"model-a", "model-b", "model-c"} {
+		if !names[want] {
+			t.Errorf("missing model %q in %+v", want, models)
+		}
+	}
+
+	// Newest-first sort: model-a (1 hour) before model-b (2 days) before model-c (1 week)
+	if models[0].Name != "model-a" {
+		t.Errorf("first model = %q, want model-a", models[0].Name)
+	}
+}
+
+func TestParseUpdateTimeSingular(t *testing.T) {
+	now := time.Now()
+	cases := []struct {
+		in   string
+		want time.Duration
+	}{
+		{"1 hour ago", time.Hour},
+		{"1 day ago", 24 * time.Hour},
+		{"1 week ago", 7 * 24 * time.Hour},
+	}
+	for _, tt := range cases {
+		got := parseUpdateTime(tt.in)
+		diff := now.Sub(got)
+		if diff < tt.want-time.Minute || diff > tt.want+time.Minute {
+			t.Errorf("parseUpdateTime(%q) delta = %v, want about %v", tt.in, diff, tt.want)
+		}
+	}
+}
+
 func TestFilterBySize(t *testing.T) {
-	// Test data
 	models := []Model{
 		{Name: "llama2", Size: "7.0B"},
 		{Name: "mistral", Size: "14.0B"},
@@ -245,7 +338,6 @@ func TestFilterBySize(t *testing.T) {
 		{Name: "gemma2", Size: "4.0B"},
 	}
 
-	// Test cases
 	tests := []struct {
 		name    string
 		maxSize float64
@@ -280,7 +372,6 @@ func TestFilterBySize(t *testing.T) {
 		},
 	}
 
-	// Run tests
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			got := FilterBySize(models, tt.maxSize)
