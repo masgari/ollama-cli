@@ -19,6 +19,9 @@ on:
   schedule:
     - cron: '0 0 * * 0'  # Keep weekly runs for full scans
 
+permissions:
+  contents: read
+
 jobs:
   analyze:
     name: Analyze
