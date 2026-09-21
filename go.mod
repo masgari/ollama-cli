@@ -5,7 +5,7 @@ go 1.27
 require (
 	github.com/fatih/color v1.19.0
 	github.com/hashicorp/go-version v1.9.0
-	github.com/ollama/ollama v0.34.0
+	github.com/ollama/ollama v0.34.2
 	github.com/spf13/cobra v1.10.2
 	github.com/spf13/viper v1.21.0
 	github.com/stretchr/testify v1.12.1
