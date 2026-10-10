@@ -3,6 +3,7 @@ package available
 import (
 	"context"
 	"fmt"
+	"html"
 	"io"
 	"net/http"
 	"net/url"
@@ -10,23 +11,43 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 )
 
 const (
-	// DefaultSearchURL lists models on ollama.com sorted by newest.
-	DefaultSearchURL = "https://ollama.com/search?o=newest"
-	maxSearchPages   = 50
+	searchBaseURL  = "https://ollama.com/search"
+	maxSearchPages = 50
+	enrichWorkers  = 8
 )
+
+// libraryURLBase is the origin used when enriching file sizes from library pages.
+var libraryURLBase = "https://ollama.com"
+
+// DefaultSearchURL lists local models on ollama.com sorted by newest.
+var DefaultSearchURL = mustBuildSearchURL(SearchOptions{
+	Sort:  "newest",
+	Where: "local",
+})
+
+// SearchOptions controls ollama.com/search query parameters.
+type SearchOptions struct {
+	Sort         string   // newest, name, popular
+	Where        string   // local, cloud, all
+	Capabilities []string // tools, thinking, vision, embedding, decision
+	MaxGB        int      // 0 (any), 8, 16, 32, 64
+}
 
 // Model represents a model available on ollama.com
 type Model struct {
-	Name        string `json:"name"`
-	Description string `json:"description"`
-	Size        string `json:"size,omitempty"`
-	Pulls       string `json:"pulls,omitempty"`
-	Tags        string `json:"tags,omitempty"`
-	Updated     string `json:"updated,omitempty"`
+	Name         string `json:"name"`
+	Description  string `json:"description"`
+	Size         string `json:"size,omitempty"`
+	FileSize     string `json:"file_size,omitempty"`
+	Capabilities string `json:"capabilities,omitempty"`
+	Pulls        string `json:"pulls,omitempty"`
+	Tags         string `json:"tags,omitempty"`
+	Updated      string `json:"updated,omitempty"`
 }
 
 // ModelFetcher is responsible for fetching models from a remote server
@@ -45,16 +66,105 @@ func NewModelFetcher(client *http.Client, url string) *ModelFetcher {
 }
 
 var (
-	modelBlockRegex = regexp.MustCompile(`(?s)<li\s+class="flex items-baseline[^"]*".*?</li>`)
-	nameRegex       = regexp.MustCompile(`href="/library/([^"]+)"`)
-	descRegex       = regexp.MustCompile(`<p class="max-w-lg break-words[^>]*>(.*?)</p>`)
-	sizeRegex       = regexp.MustCompile(`<span[^>]*>\s*(\d+(?:\.\d+)?[bB])\s*</span>`)
-	pullsRegex      = regexp.MustCompile(`(?s)<span[^>]*>\s*([^<]+?)\s*</span>\s*<span[^>]*>\s*(?:&nbsp;)?\s*Pulls\s*</span>`)
-	tagsRegex       = regexp.MustCompile(`(?s)<span[^>]*>\s*([^<]+?)\s*</span>\s*<span[^>]*>\s*(?:&nbsp;)?\s*Tags?\s*</span>`)
-	updatedRegex    = regexp.MustCompile(`(?s)Updated(?:&nbsp;|\s)*</span>\s*<span[^>]*>\s*([^<]+?)\s*</span>`)
-	updatedTitleRe  = regexp.MustCompile(`title="([^"]+)"[^>]*>\s*(?:<svg[\s\S]*?</svg>\s*)?(?:<span[^>]*>\s*Updated(?:&nbsp;|\s)*</span>\s*)?<span[^>]*>\s*([^<]+?)\s*</span>`)
-	nextPageRegex   = regexp.MustCompile(`hx-get="/search\?page=(\d+)"`)
+	modelBlockRegex   = regexp.MustCompile(`(?s)<li\b[^>]*>\s*<a href="/library/[^"]+".*?</li>`)
+	nameRegex         = regexp.MustCompile(`href="/library/([^"]+)"`)
+	descRegex         = regexp.MustCompile(`<p class="[^"]*max-w-[^"]*"[^>]*>(.*?)</p>`)
+	sizeRegex         = regexp.MustCompile(`bg-\[#ddf4ff\][^>]*>\s*(\d+(?:\.\d+)?[bBmM])\s*<`)
+	capabilityRegex   = regexp.MustCompile(`bg-indigo-50[^>]*>\s*([a-zA-Z]+)\s*<`)
+	pullsRegex        = regexp.MustCompile(`(?s)title="[\d,]+ downloads"[^>]*>.*?<span[^>]*>\s*([^<]+?)\s*</span>`)
+	pullsTitleRegex   = regexp.MustCompile(`title="([\d,]+) downloads"`)
+	tagsRegex         = regexp.MustCompile(`(?s)<span[^>]*>\s*([^<]+?)\s*</span>\s*<span[^>]*>\s*(?:&nbsp;)?\s*Tags?\s*</span>`)
+	updatedRegex      = regexp.MustCompile(`(?s)Updated(?:&nbsp;|\s)*</span>\s*<span[^>]*>\s*([^<]+?)\s*</span>`)
+	updatedTitleRe    = regexp.MustCompile(`title="([^"]+)"[^>]*>\s*(?:<svg[\s\S]*?</svg>\s*)?<span[^>]*>\s*Updated(?:&nbsp;|\s)*</span>\s*<span[^>]*>\s*([^<]+?)\s*</span>`)
+	nextPageRegex     = regexp.MustCompile(`hx-get="/search\?page=(\d+)"`)
+	libraryFileSizeRe = regexp.MustCompile(`(\d+(?:\.\d+)?\s*[GMK]B)\s*·`)
+
+	validSorts = map[string]bool{
+		"newest":  true,
+		"name":    true,
+		"popular": true,
+	}
+	validWhere = map[string]bool{
+		"local": true,
+		"cloud": true,
+		"all":   true,
+	}
+	validCapabilities = map[string]bool{
+		"tools":     true,
+		"thinking":  true,
+		"vision":    true,
+		"embedding": true,
+		"decision":  true,
+	}
+	validMaxGB = map[int]bool{
+		0:  true,
+		8:  true,
+		16: true,
+		32: true,
+		64: true,
+	}
 )
+
+func mustBuildSearchURL(opts SearchOptions) string {
+	u, err := BuildSearchURL(opts)
+	if err != nil {
+		panic(err)
+	}
+	return u
+}
+
+// BuildSearchURL builds an ollama.com/search URL from the given options.
+func BuildSearchURL(opts SearchOptions) (string, error) {
+	if opts.Sort == "" {
+		opts.Sort = "newest"
+	}
+	if opts.Where == "" {
+		opts.Where = "local"
+	}
+
+	sortKey := strings.ToLower(opts.Sort)
+	if !validSorts[sortKey] {
+		return "", fmt.Errorf("invalid sort %q (want newest, name, or popular)", opts.Sort)
+	}
+
+	whereKey := strings.ToLower(opts.Where)
+	if !validWhere[whereKey] {
+		return "", fmt.Errorf("invalid where %q (want local, cloud, or all)", opts.Where)
+	}
+
+	if !validMaxGB[opts.MaxGB] {
+		return "", fmt.Errorf("invalid max-gb %d (want 0, 8, 16, 32, or 64)", opts.MaxGB)
+	}
+
+	q := url.Values{}
+	q.Set("o", sortKey)
+
+	if whereKey == "local" || whereKey == "cloud" {
+		q.Add("c", whereKey)
+	}
+
+	seenCaps := make(map[string]bool)
+	for _, cap := range opts.Capabilities {
+		capKey := strings.ToLower(strings.TrimSpace(cap))
+		if capKey == "" {
+			continue
+		}
+		if !validCapabilities[capKey] {
+			return "", fmt.Errorf("invalid capability %q (want tools, thinking, vision, embedding, or decision)", cap)
+		}
+		if seenCaps[capKey] {
+			continue
+		}
+		seenCaps[capKey] = true
+		q.Add("c", capKey)
+	}
+
+	if opts.MaxGB > 0 {
+		q.Set("s", strconv.Itoa(opts.MaxGB))
+	}
+
+	return searchBaseURL + "?" + q.Encode(), nil
+}
 
 // FetchModels fetches the list of available models from the specified URL,
 // following HTMX infinite-scroll pagination when present.
@@ -109,7 +219,7 @@ func (mf *ModelFetcher) FetchModels(ctx context.Context) ([]Model, error) {
 		return nil, fmt.Errorf("no models found in response")
 	}
 
-	sortModelsByUpdateTime(allModels)
+	maybeSortModelsByUpdateTime(allModels)
 	return allModels, nil
 }
 
@@ -163,9 +273,80 @@ func FetchModels(ctx context.Context, timeout int) ([]Model, error) {
 	return fetcher.FetchModels(ctx)
 }
 
+// EnrichFileSizes fills FileSize for each model by fetching its library page.
+// Failures are best-effort: models without a parseable size are left empty.
+func EnrichFileSizes(ctx context.Context, client *http.Client, models []Model) {
+	if len(models) == 0 {
+		return
+	}
+
+	workers := enrichWorkers
+	if len(models) < workers {
+		workers = len(models)
+	}
+
+	jobs := make(chan int, len(models))
+	var wg sync.WaitGroup
+	for w := 0; w < workers; w++ {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			for i := range jobs {
+				if ctx.Err() != nil {
+					return
+				}
+				size, err := fetchLibraryFileSize(ctx, client, models[i].Name)
+				if err == nil && size != "" {
+					models[i].FileSize = size
+				}
+			}
+		}()
+	}
+
+	for i := range models {
+		jobs <- i
+	}
+	close(jobs)
+	wg.Wait()
+}
+
+func fetchLibraryFileSize(ctx context.Context, client *http.Client, name string) (string, error) {
+	pageURL := libraryURLBase + "/library/" + url.PathEscape(name)
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, pageURL, nil)
+	if err != nil {
+		return "", err
+	}
+	req.Header.Set("User-Agent", "ollama-cli")
+
+	resp, err := client.Do(req)
+	if err != nil {
+		return "", err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return "", fmt.Errorf("unexpected status code: %d", resp.StatusCode)
+	}
+
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return "", err
+	}
+
+	return parseLibraryFileSize(string(body)), nil
+}
+
+func parseLibraryFileSize(pageHTML string) string {
+	match := libraryFileSizeRe.FindStringSubmatch(pageHTML)
+	if len(match) < 2 {
+		return ""
+	}
+	return strings.ReplaceAll(strings.TrimSpace(match[1]), " ", "")
+}
+
 // parseModels parses the HTML response from ollama.com/search
-func parseModels(html string) ([]Model, error) {
-	modelBlocks := modelBlockRegex.FindAllString(html, -1)
+func parseModels(pageHTML string) ([]Model, error) {
+	modelBlocks := modelBlockRegex.FindAllString(pageHTML, -1)
 	if len(modelBlocks) == 0 {
 		return nil, fmt.Errorf("no models found in response")
 	}
@@ -181,7 +362,7 @@ func parseModels(html string) ([]Model, error) {
 		model := Model{Name: name}
 
 		if descMatch := descRegex.FindStringSubmatch(block); len(descMatch) >= 2 {
-			model.Description = strings.TrimSpace(descMatch[1])
+			model.Description = strings.TrimSpace(html.UnescapeString(descMatch[1]))
 		}
 
 		var sizes []string
@@ -198,8 +379,21 @@ func parseModels(html string) ([]Model, error) {
 		})
 		model.Size = strings.Join(sizes, ", ")
 
+		var caps []string
+		for _, capMatch := range capabilityRegex.FindAllStringSubmatch(block, -1) {
+			if len(capMatch) >= 2 {
+				cap := strings.TrimSpace(capMatch[1])
+				if cap != "" {
+					caps = append(caps, cap)
+				}
+			}
+		}
+		model.Capabilities = strings.Join(caps, ", ")
+
 		if pullsMatch := pullsRegex.FindStringSubmatch(block); len(pullsMatch) >= 2 {
 			model.Pulls = strings.TrimSpace(pullsMatch[1])
+		} else if titleMatch := pullsTitleRegex.FindStringSubmatch(block); len(titleMatch) >= 2 {
+			model.Pulls = strings.TrimSpace(titleMatch[1])
 		}
 
 		if tagsMatch := tagsRegex.FindStringSubmatch(block); len(tagsMatch) >= 2 {
@@ -223,8 +417,19 @@ func parseModels(html string) ([]Model, error) {
 		return nil, fmt.Errorf("no models found in response")
 	}
 
-	sortModelsByUpdateTime(models)
+	maybeSortModelsByUpdateTime(models)
 	return models, nil
+}
+
+// maybeSortModelsByUpdateTime sorts by update time when present; otherwise
+// preserves server order (e.g. newest-first from ?o=newest).
+func maybeSortModelsByUpdateTime(models []Model) {
+	for _, m := range models {
+		if m.Updated != "" {
+			sortModelsByUpdateTime(models)
+			return
+		}
+	}
 }
 
 // sortModelsByUpdateTime sorts models by their update time, most recent first
@@ -340,9 +545,20 @@ func FilterBySize(models []Model, maxSize float64) []Model {
 	return filteredModels
 }
 
-// extractNumericValue extracts the numeric value from a size string (e.g., "1.5b" -> 1.5)
+// extractNumericValue extracts the numeric value from a size string in billions
+// (e.g., "1.5b" -> 1.5, "270m" -> 0.27).
 func extractNumericValue(size string) float64 {
-	size = strings.TrimSuffix(strings.TrimSuffix(size, "b"), "B")
-	val, _ := strconv.ParseFloat(size, 64)
-	return val
+	size = strings.TrimSpace(size)
+	lower := strings.ToLower(size)
+	switch {
+	case strings.HasSuffix(lower, "m"):
+		val, _ := strconv.ParseFloat(strings.TrimSuffix(lower, "m"), 64)
+		return val / 1000
+	case strings.HasSuffix(lower, "b"):
+		val, _ := strconv.ParseFloat(strings.TrimSuffix(lower, "b"), 64)
+		return val
+	default:
+		val, _ := strconv.ParseFloat(lower, 64)
+		return val
+	}
 }

@@ -54,9 +54,21 @@ func TestAvailableCommand(t *testing.T) {
 		},
 		{
 			name:        "With limit flag set to -1",
-			args:        []string{"--limit", "-1"},
+			args:        []string{"--limit", "-1", "--timeout", "120"},
 			wantErr:     false,
 			wantContain: "",
+		},
+		{
+			name:        "With where cloud",
+			args:        []string{"--where", "cloud", "--limit", "2"},
+			wantErr:     false,
+			wantContain: "Displaying 2 of",
+		},
+		{
+			name:        "With sort name",
+			args:        []string{"--sort", "name", "--limit", "2"},
+			wantErr:     false,
+			wantContain: "Displaying 2 of",
 		},
 	}
 
@@ -68,6 +80,10 @@ func TestAvailableCommand(t *testing.T) {
 			timeout = 30
 			limit = 10
 			maxSize = 0
+			sortBy = "newest"
+			where = "local"
+			capabilities = nil
+			maxGB = 0
 
 			// Create a new command for testing
 			cmd := &cobra.Command{Use: "test"}

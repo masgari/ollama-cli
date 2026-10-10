@@ -13,10 +13,14 @@ import (
 )
 
 var (
-	filterName string
-	timeout    int
-	limit      int
-	maxSize    float64
+	filterName   string
+	timeout      int
+	limit        int
+	maxSize      float64
+	sortBy       string
+	where        string
+	capabilities []string
+	maxGB        int
 )
 
 // availableCmd represents the available command
@@ -24,11 +28,21 @@ var availableCmd = &cobra.Command{
 	Use:     "available",
 	Aliases: []string{"avail"},
 	Short:   "List models available on ollama.com",
-	Long:    `List all models that are available on ollama.com/search (newest first).`,
+	Long:    `List models available on ollama.com/search (local models, newest first by default).`,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		// Get the output format from flags
 		outputFormat, _ := cmd.Flags().GetString("output")
 		showDetails, _ := cmd.Flags().GetBool("details")
+
+		searchURL, err := available.BuildSearchURL(available.SearchOptions{
+			Sort:         sortBy,
+			Where:        where,
+			Capabilities: capabilities,
+			MaxGB:        maxGB,
+		})
+		if err != nil {
+			return err
+		}
 
 		// Create a context with timeout
 		ctx, cancel := context.WithTimeout(context.Background(), time.Duration(timeout)*time.Second)
@@ -40,7 +54,7 @@ var availableCmd = &cobra.Command{
 		}
 
 		// Create ModelFetcher with the client
-		fetcher := available.NewModelFetcher(client, available.DefaultSearchURL)
+		fetcher := available.NewModelFetcher(client, searchURL)
 
 		// Fetch available models using the fetcher
 		models, err := fetcher.FetchModels(ctx)
@@ -79,6 +93,8 @@ var availableCmd = &cobra.Command{
 			models = models[:limit]
 		}
 
+		available.EnrichFileSizes(ctx, client, models)
+
 		// Handle different output formats
 		var outputErr error
 		switch strings.ToLower(outputFormat) {
@@ -108,5 +124,9 @@ func init() {
 	availableCmd.Flags().StringVarP(&filterName, "filter", "f", "", "Filter models by name")
 	availableCmd.Flags().IntVarP(&timeout, "timeout", "t", 30, "Timeout in seconds for the HTTP request")
 	availableCmd.Flags().IntVarP(&limit, "limit", "l", 10, "Limit the number of models displayed (-1 for all)")
-	availableCmd.Flags().Float64VarP(&maxSize, "size", "s", 0, "Filter models by maximum size in billions (e.g., 7 for 7B models)")
+	availableCmd.Flags().Float64VarP(&maxSize, "size", "s", 0, "Filter models by maximum parameter size in billions (e.g., 7 for 7B models)")
+	availableCmd.Flags().StringVar(&sortBy, "sort", "newest", "Sort order from ollama.com (newest, name, popular)")
+	availableCmd.Flags().StringVar(&where, "where", "local", "Model location (local, cloud, all)")
+	availableCmd.Flags().StringSliceVar(&capabilities, "capability", nil, "Filter by capability (tools, thinking, vision, embedding, decision); repeatable")
+	availableCmd.Flags().IntVar(&maxGB, "max-gb", 0, "Filter by max download size in GB (8, 16, 32, 64; 0 for any)")
 }
