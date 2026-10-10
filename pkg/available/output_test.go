@@ -98,18 +98,23 @@ func TestOutputTable(t *testing.T) {
 	if !strings.Contains(output, "7.0B") {
 		t.Errorf("Expected output to contain '7.0B', got: %s", output)
 	}
+	if !strings.Contains(output, "FILE") {
+		t.Errorf("Expected output to contain FILE column header, got: %s", output)
+	}
 }
 
 func TestOutputWide(t *testing.T) {
 	// Test data
 	models := []Model{
 		{
-			Name:        "llama2",
-			Description: "Llama 2 model",
-			Size:        "7.0B",
-			Pulls:       "1M",
-			Tags:        "10",
-			Updated:     "1 day ago",
+			Name:         "llama2",
+			Description:  "Llama 2 model",
+			Size:         "7.0B",
+			FileSize:     "3.8GB",
+			Capabilities: "tools, vision",
+			Pulls:        "1M",
+			Tags:         "10",
+			Updated:      "1 day ago",
 		},
 	}
 
@@ -139,5 +144,11 @@ func TestOutputWide(t *testing.T) {
 	}
 	if !strings.Contains(output, "Llama 2 model") {
 		t.Errorf("Expected output to contain 'Llama 2 model', got: %s", output)
+	}
+	if !strings.Contains(output, "3.8GB") {
+		t.Errorf("Expected output to contain '3.8GB', got: %s", output)
+	}
+	if !strings.Contains(output, "tools, vision") {
+		t.Errorf("Expected output to contain capabilities, got: %s", output)
 	}
 }

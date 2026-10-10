@@ -24,23 +24,26 @@ func OutputTableWithWriter(w io.Writer, models []Model, showDetails bool) error 
 	tw := tabwriter.NewWriter(w, 0, 0, 3, ' ', 0)
 
 	if showDetails {
-		fmt.Fprintln(tw, output.MakeHeader("NAME\tSIZE\tUPDATED\tDESCRIPTION"))
+		fmt.Fprintln(tw, output.MakeHeader("NAME\tSIZE\tFILE\tCAPS\tUPDATED\tDESCRIPTION"))
 	} else {
-		fmt.Fprintln(tw, output.MakeHeader("NAME\tSIZE\tUPDATED"))
+		fmt.Fprintln(tw, output.MakeHeader("NAME\tSIZE\tFILE\tUPDATED"))
 	}
 
 	for _, model := range models {
 		if showDetails {
-			fmt.Fprintf(tw, "%s\t%s\t%s\t%s\n",
+			fmt.Fprintf(tw, "%s\t%s\t%s\t%s\t%s\t%s\n",
 				output.Highlight(model.Name),
 				output.Info(formatSize(model.Size)),
+				output.Info(getOrDefault(model.FileSize, "-")),
+				output.Info(getOrDefault(model.Capabilities, "-")),
 				output.Info(formatUpdated(model.Updated)),
 				getOrDefault(model.Description, ""),
 			)
 		} else {
-			fmt.Fprintf(tw, "%s\t%s\t%s\n",
+			fmt.Fprintf(tw, "%s\t%s\t%s\t%s\n",
 				output.Highlight(model.Name),
 				output.Info(formatSize(model.Size)),
+				output.Info(getOrDefault(model.FileSize, "-")),
 				output.Info(formatUpdated(model.Updated)),
 			)
 		}
@@ -57,12 +60,14 @@ func OutputWide(models []Model) error {
 // OutputWideWithWriter formats and displays the models in a wide table format using the provided writer
 func OutputWideWithWriter(w io.Writer, models []Model) error {
 	tw := tabwriter.NewWriter(w, 0, 0, 3, ' ', 0)
-	fmt.Fprintln(tw, output.MakeHeader("NAME\tSIZE\tPULLS\tTAGS\tUPDATED\tDESCRIPTION"))
+	fmt.Fprintln(tw, output.MakeHeader("NAME\tSIZE\tFILE\tCAPS\tPULLS\tTAGS\tUPDATED\tDESCRIPTION"))
 
 	for _, model := range models {
-		fmt.Fprintf(tw, "%s\t%s\t%s\t%s\t%s\t%s\n",
+		fmt.Fprintf(tw, "%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n",
 			output.Highlight(model.Name),
 			output.Info(formatSize(model.Size)),
+			getOrDefault(model.FileSize, ""),
+			getOrDefault(model.Capabilities, ""),
 			getOrDefault(model.Pulls, ""),
 			getOrDefault(model.Tags, ""),
 			getOrDefault(model.Updated, ""),

@@ -77,35 +77,10 @@ func TestIntegrationFetchModelsFromOllama(t *testing.T) {
 		t.Errorf("None of the models have pull counts, expected at least some to have pull counts")
 	}
 
-	// Check that we have at least some models with tag counts
-	hasTags := false
-	for _, m := range models {
-		if m.Tags != "" {
-			hasTags = true
-			break
-		}
-	}
-	if !hasTags {
-		t.Errorf("None of the models have tag counts, expected at least some to have tag counts")
-	}
-
-	// Check that we have at least some models with update times
-	hasUpdated := false
-	for _, m := range models {
-		if m.Updated != "" {
-			hasUpdated = true
-			break
-		}
-	}
-	if !hasUpdated {
-		t.Errorf("None of the models have update times, expected at least some to have update times")
-	}
-
-	// Find a model that has all fields populated to verify our regex patterns
+	// Find a model with the fields currently present on the search listing
 	var completeModel *Model
 	for i, m := range models {
-		if m.Name != "" && m.Description != "" && m.Size != "" &&
-			m.Pulls != "" && m.Tags != "" && m.Updated != "" {
+		if m.Name != "" && m.Description != "" && m.Size != "" && m.Pulls != "" {
 			completeModel = &models[i]
 			break
 		}
@@ -114,7 +89,7 @@ func TestIntegrationFetchModelsFromOllama(t *testing.T) {
 	if completeModel != nil {
 		t.Logf("Found a complete model: %+v", *completeModel)
 	} else {
-		t.Logf("Could not find a model with all fields populated")
+		t.Logf("Could not find a model with name, description, size, and pulls")
 	}
 
 	// Verify that we can filter models by name using a token we know exists
